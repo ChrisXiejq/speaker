@@ -1,0 +1,32 @@
+<view class="wrap" wx:if="{{ detail }}">
+  <view class="card">
+    <view class="row">
+      <text class="tag">{{ detail.session.part }}</text>
+      <text class="muted small">{{ detail.session.status }}</text>
+    </view>
+    <view class="topic">{{ detail.session.topic || '（无主题）' }}</view>
+    <view class="muted small">{{ detail.session.startedAt }}</view>
+  </view>
+
+  <view class="card" wx:if="{{ detail.report }}">
+    <view class="title">评价</view>
+    <view class="muted">Overall: {{ detail.report.overallBand }}</view>
+    <view class="row5">
+      <text>P {{ detail.report.pronunciationScore }}</text>
+      <text>G {{ detail.report.grammarScore }}</text>
+      <text>C {{ detail.report.coherenceScore }}</text>
+      <text>F {{ detail.report.fluencyScore }}</text>
+      <text>I {{ detail.report.ideasScore }}</text>
+    </view>
+    <view class="block">{{ detail.report.detailedFeedback }}</view>
+  </view>
+
+  <view class="card">
+    <view class="title">对话</view>
+    <view class="turn" wx:for="{{ detail.turns }}" wx:key="id">
+      <view class="role">{{ item.role === 'EXAMINER' ? '考官' : '你' }}</view>
+      <view class="content">{{ item.content }}</view>
+      <view class="muted small" wx:if="{{ item.briefEval }}">简评：{{ item.briefEval }}</view>
+    </view>
+  </view>
+</view>

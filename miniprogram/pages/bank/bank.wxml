@@ -1,0 +1,18 @@
+<view class="wrap">
+  <view class="card">
+    <view class="label">季节</view>
+    <picker mode="selector" range="{{ seasons }}" value="{{ seasonIndex }}" bindchange="onSeasonChange">
+      <view class="picker">{{ seasons[seasonIndex] }}</view>
+    </picker>
+    <view class="label">Part</view>
+    <picker mode="selector" range="{{ parts }}" value="{{ partIndex }}" bindchange="onPartChange">
+      <view class="picker">{{ parts[partIndex] }}</view>
+    </picker>
+  </view>
+
+  <view wx:if="{{ !items.length }}" class="muted empty">暂无题目</view>
+  <view class="item" wx:for="{{ items }}" wx:key="id">
+    <view class="topic">{{ item.topic }}</view>
+    <view class="q">{{ item.questionText }}</view>
+  </view>
+</view>

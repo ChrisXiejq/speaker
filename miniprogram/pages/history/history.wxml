@@ -1,0 +1,11 @@
+<view class="wrap">
+  <view wx:if="{{ !list.length }}" class="muted empty">暂无记录</view>
+  <view class="item" wx:for="{{ list }}" wx:key="id" data-id="{{ item.id }}" bindtap="openDetail">
+    <view class="row">
+      <text class="tag">{{ item.part }}</text>
+      <text class="muted small">{{ item.status }}</text>
+    </view>
+    <view class="topic">{{ item.topic || '（无主题）' }}</view>
+    <view class="muted small">{{ item.startedAt }}</view>
+  </view>
+</view>

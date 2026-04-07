@@ -1,0 +1,7 @@
+{
+  "name": "speaking-test-killer-miniprogram",
+  "private": true,
+  "devDependencies": {
+    "miniprogram-api-typings": "^4.1.0"
+  }
+}

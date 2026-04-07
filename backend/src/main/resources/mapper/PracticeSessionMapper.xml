@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.speakingkiller.app.mapper.PracticeSessionMapper">
+
+    <resultMap id="PsMap" type="com.speakingkiller.app.model.entity.PracticeSession">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="part" property="part"
+                javaType="com.speakingkiller.app.model.entity.PracticeSession$Part"
+                typeHandler="org.apache.ibatis.type.EnumTypeHandler"/>
+        <result column="topic" property="topic"/>
+        <result column="topic_prompt" property="topicPrompt"/>
+        <result column="status" property="status"
+                javaType="com.speakingkiller.app.model.entity.PracticeSession$Status"
+                typeHandler="org.apache.ibatis.type.EnumTypeHandler"/>
+        <result column="started_at" property="startedAt"
+                typeHandler="com.speakingkiller.app.mybatis.typehandler.InstantMillisTypeHandler"/>
+        <result column="ended_at" property="endedAt"
+                typeHandler="com.speakingkiller.app.mybatis.typehandler.InstantMillisTypeHandler"/>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO practice_sessions (user_id, part, topic, topic_prompt, status, started_at, ended_at)
+        VALUES (#{userId}, #{part}, #{topic}, #{topicPrompt}, #{status},
+                #{startedAt, typeHandler=com.speakingkiller.app.mybatis.typehandler.InstantMillisTypeHandler},
+                #{endedAt, typeHandler=com.speakingkiller.app.mybatis.typehandler.InstantMillisTypeHandler})
+    </insert>
+
+    <update id="update">
+        UPDATE practice_sessions
+        SET user_id = #{userId},
+            part = #{part},
+            topic = #{topic},
+            topic_prompt = #{topicPrompt},
+            status = #{status},
+            started_at = #{startedAt, typeHandler=com.speakingkiller.app.mybatis.typehandler.InstantMillisTypeHandler},
+            ended_at = #{endedAt, typeHandler=com.speakingkiller.app.mybatis.typehandler.InstantMillisTypeHandler}
+        WHERE id = #{id}
+    </update>
+
+    <select id="findById" resultMap="PsMap">
+        SELECT * FROM practice_sessions WHERE id = #{id}
+    </select>
+
+    <select id="countByUserId" resultType="long">
+        SELECT COUNT(*) FROM practice_sessions WHERE user_id = #{userId}
+    </select>
+
+    <select id="findByUserIdOrderByStartedAtDesc" resultMap="PsMap">
+        SELECT * FROM practice_sessions
+        WHERE user_id = #{userId}
+        ORDER BY started_at DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+</mapper>

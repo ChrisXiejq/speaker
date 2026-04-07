@@ -1,0 +1,30 @@
+<view class="wrap">
+  <view class="hero">
+    <view class="title">雅思口语模拟对练</view>
+    <view class="subtitle muted">英式考官风格 · Part 1/2/3 · 通义千问驱动</view>
+  </view>
+
+  <view class="card">
+    <view class="row">
+      <text class="muted">登录状态：</text>
+      <text>{{ loggedIn ? '已登录' : '未登录' }}</text>
+    </view>
+    <button class="btn-primary" wx:if="{{ !loggedIn }}" bindtap="goLogin">登录 / 注册</button>
+    <button class="btn-outline" wx:else bindtap="logout">退出登录</button>
+  </view>
+
+  <view class="grid">
+    <view class="tile" bindtap="goPractice">
+      <view class="tile-title">口语对练</view>
+      <view class="tile-desc muted">模拟考官提问与即时反馈</view>
+    </view>
+    <view class="tile" bindtap="goHistory">
+      <view class="tile-title">历史记录</view>
+      <view class="tile-desc muted">会话与评分报告</view>
+    </view>
+    <view class="tile" bindtap="goBank">
+      <view class="tile-title">当季题库</view>
+      <view class="tile-desc muted">内置题库浏览</view>
+    </view>
+  </view>
+</view>

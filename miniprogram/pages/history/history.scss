@@ -1,0 +1,40 @@
+.wrap {
+  padding: 16rpx 24rpx 40rpx;
+}
+
+.empty {
+  text-align: center;
+  padding: 80rpx 0;
+}
+
+.item {
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 16rpx;
+  padding: 22rpx;
+  margin-bottom: 16rpx;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tag {
+  font-size: 22rpx;
+  padding: 6rpx 12rpx;
+  border-radius: 999rpx;
+  background: rgba(56, 189, 248, 0.15);
+  color: #7dd3fc;
+}
+
+.topic {
+  margin-top: 12rpx;
+  font-size: 28rpx;
+  color: #e2e8f0;
+}
+
+.small {
+  font-size: 22rpx;
+}

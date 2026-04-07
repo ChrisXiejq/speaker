@@ -1,0 +1,56 @@
+<view class="wrap">
+  <view class="card" wx:if="{{ !started }}">
+    <view class="label">Part</view>
+    <picker mode="selector" range="{{ parts }}" value="{{ partIndex }}" bindchange="onPartChange">
+      <view class="picker">{{ parts[partIndex] }}</view>
+    </picker>
+    <view class="label">题目来源</view>
+    <picker mode="selector" range="{{ sources }}" value="{{ sourceIndex }}" bindchange="onSourceChange">
+      <view class="picker">{{ sources[sourceIndex] }}</view>
+    </picker>
+    <view class="label">季节标签（题库模式）</view>
+    <input class="input" value="{{ season }}" bindinput="onSeason" />
+    <view class="label" wx:if="{{ sources[sourceIndex] === 'CUSTOM' }}">自定义话题</view>
+    <input wx:if="{{ sources[sourceIndex] === 'CUSTOM' }}" class="input" placeholder="例如：travel / technology" value="{{ customTopic }}" bindinput="onCustomTopic" />
+    <button class="btn-primary" loading="{{ busy }}" bindtap="start">开始模拟</button>
+  </view>
+
+  <view wx:if="{{ started }}">
+    <view class="card">
+      <view class="muted">Topic</view>
+      <view class="block">{{ topic }}</view>
+      <view class="muted mt">考官</view>
+      <view class="block">{{ examinerLine }}</view>
+      <view class="muted mt" wx:if="{{ lastBrief }}">上一答简评</view>
+      <view class="block" wx:if="{{ lastBrief }}">{{ lastBrief }}</view>
+    </view>
+
+    <view class="card">
+      <view class="muted">听说练习</view>
+      <view class="hint">先播放题目，再录音说英语；识别结果可编辑后提交。</view>
+      <button class="btn-outline" loading="{{ busy }}" bindtap="playExaminerTts">播放题目（服务端 TTS）</button>
+      <button class="btn-outline" loading="{{ busy }}" disabled="{{ recording }}" bindtap="toggleRecord">
+        {{ recording ? '结束录音并识别' : '开始录音' }}
+      </button>
+      <view class="speech-hint" wx:if="{{ speechHint }}">{{ speechHint }}</view>
+      <view class="label">你的回答</view>
+      <textarea class="area" auto-height placeholder="英文回答（可手改）" value="{{ userText }}" bindinput="onUserText" />
+      <button class="btn-primary" loading="{{ busy }}" bindtap="send">提交回答</button>
+      <button class="btn-outline" loading="{{ busy }}" bindtap="finish">结束并生成评价</button>
+      <button class="btn-outline" bindtap="reset">重新开始</button>
+    </view>
+
+    <view class="card" wx:if="{{ report }}">
+      <view class="title">评分与反馈</view>
+      <view class="muted">Overall: {{ report.overallBand }}</view>
+      <view class="row5">
+        <text>P {{ report.pronunciationScore }}</text>
+        <text>G {{ report.grammarScore }}</text>
+        <text>C {{ report.coherenceScore }}</text>
+        <text>F {{ report.fluencyScore }}</text>
+        <text>I {{ report.ideasScore }}</text>
+      </view>
+      <view class="block mt">{{ report.detailedFeedback }}</view>
+    </view>
+  </view>
+</view>

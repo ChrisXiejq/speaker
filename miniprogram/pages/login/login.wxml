@@ -1,0 +1,10 @@
+<view class="wrap">
+  <view class="card">
+    <view class="label">用户名</view>
+    <input class="input" placeholder="3-64 字符" bindinput="onUsername" />
+    <view class="label">密码</view>
+    <input class="input" password placeholder="至少 8 位" bindinput="onPassword" />
+    <button class="btn-primary" bindtap="submit">{{ mode === 'login' ? '登录' : '注册' }}</button>
+    <view class="muted link" bindtap="toggleMode">{{ mode === 'login' ? '没有账号？去注册' : '已有账号？去登录' }}</view>
+  </view>
+</view>
