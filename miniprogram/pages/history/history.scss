@@ -21,6 +21,21 @@
   align-items: center;
 }
 
+.row-right {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.del-btn {
+  font-size: 22rpx;
+  padding: 6rpx 14rpx;
+  border-radius: 8rpx;
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  background: rgba(127, 29, 29, 0.35);
+  color: #fecaca;
+}
+
 .tag {
   font-size: 22rpx;
   padding: 6rpx 12rpx;

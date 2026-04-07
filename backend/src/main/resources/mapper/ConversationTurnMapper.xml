@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.speakingkiller.app.mapper.ConversationTurnMapper">
+<mapper namespace="com.speaker.app.mapper.ConversationTurnMapper">
 
-    <resultMap id="TurnMap" type="com.speakingkiller.app.model.entity.ConversationTurn">
+    <resultMap id="TurnMap" type="com.speaker.app.model.entity.ConversationTurn">
         <id column="id" property="id"/>
         <result column="session_id" property="sessionId"/>
         <result column="seq" property="seq"/>
         <result column="role" property="role"
-                javaType="com.speakingkiller.app.model.entity.ConversationTurn$Role"
+                javaType="com.speaker.app.model.entity.ConversationTurn$Role"
                 typeHandler="org.apache.ibatis.type.EnumTypeHandler"/>
         <result column="content" property="content"/>
         <result column="brief_eval" property="briefEval"/>

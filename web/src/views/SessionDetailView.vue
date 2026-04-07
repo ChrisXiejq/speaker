@@ -26,6 +26,11 @@ watch(
   (id) => load(id),
   { immediate: true }
 )
+
+function formatPartLabel(p) {
+  if (p === 'PART2_AND_3') return 'Part 2 & 3'
+  return p ?? ''
+}
 </script>
 
 <template>
@@ -34,7 +39,7 @@ watch(
     <template v-else-if="detail">
       <div class="card">
         <div class="row">
-          <span class="tag">{{ detail.session.part }}</span>
+          <span class="tag">{{ formatPartLabel(detail.session.part) }}</span>
           <span class="muted small">{{ detail.session.status }}</span>
         </div>
         <p class="topic">{{ detail.session.topic || '（无主题）' }}</p>

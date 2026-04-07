@@ -55,6 +55,12 @@ const auth = useAuthStore()
 
 @media (min-width: 640px) {
   .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 900px) {
+  .grid {
     grid-template-columns: repeat(3, 1fr);
   }
 }

@@ -25,6 +25,22 @@ function openDetail(id) {
   router.push({ name: 'session-detail', params: { id: String(id) } })
 }
 
+async function removeSession(id, e) {
+  e.stopPropagation()
+  if (!confirm('确定删除这条练习记录？删除后列表中不再显示。')) return
+  try {
+    await http.delete(`/api/practice/sessions/${id}`)
+    list.value = list.value.filter((x) => x.id !== id)
+  } catch (err) {
+    alert(err.message || '删除失败')
+  }
+}
+
+function formatPartLabel(p) {
+  if (p === 'PART2_AND_3') return 'Part 2 & 3'
+  return p ?? ''
+}
+
 onMounted(load)
 </script>
 
@@ -43,8 +59,11 @@ onMounted(load)
       @keyup.enter="openDetail(item.id)"
     >
       <div class="row">
-        <span class="tag">{{ item.part }}</span>
-        <span class="muted small">{{ item.status }}</span>
+        <span class="tag">{{ formatPartLabel(item.part) }}</span>
+        <span class="row-right">
+          <span class="muted small">{{ item.status }}</span>
+          <button type="button" class="del-btn" @click="removeSession(item.id, $event)">删除</button>
+        </span>
       </div>
       <p class="topic">{{ item.topic || '（无主题）' }}</p>
       <p class="muted small">{{ item.startedAt }}</p>
@@ -77,6 +96,27 @@ onMounted(load)
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.row-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.del-btn {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  background: rgba(127, 29, 29, 0.35);
+  color: #fecaca;
+  cursor: pointer;
+}
+
+.del-btn:hover {
+  border-color: rgba(248, 113, 113, 0.75);
+  background: rgba(127, 29, 29, 0.55);
 }
 
 .tag {

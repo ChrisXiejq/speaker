@@ -24,9 +24,12 @@ http.interceptors.response.use(
   (err) => {
     const status = err.response?.status
     if (status === 401) {
-      localStorage.removeItem('sk_token')
-      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
-        window.location.href = '/login'
+      const url = err.config?.url ?? ''
+      if (!url.includes('/api/admin')) {
+        localStorage.removeItem('sk_token')
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+          window.location.href = '/login'
+        }
       }
     }
     const msg = err.response?.data?.error || err.message || '请求失败'

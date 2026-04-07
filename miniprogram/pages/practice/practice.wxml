@@ -1,15 +1,17 @@
 <view class="wrap">
   <view class="card" wx:if="{{ !started }}">
     <view class="label">Part</view>
-    <picker mode="selector" range="{{ parts }}" value="{{ partIndex }}" bindchange="onPartChange">
-      <view class="picker">{{ parts[partIndex] }}</view>
+    <picker mode="selector" range="{{ partLabels }}" value="{{ partIndex }}" bindchange="onPartChange">
+      <view class="picker">{{ partLabels[partIndex] }}</view>
     </picker>
     <view class="label">题目来源</view>
     <picker mode="selector" range="{{ sources }}" value="{{ sourceIndex }}" bindchange="onSourceChange">
       <view class="picker">{{ sources[sourceIndex] }}</view>
     </picker>
-    <view class="label">季节标签（题库模式）</view>
-    <input class="input" value="{{ season }}" bindinput="onSeason" />
+    <view class="label">季节（题库模式）</view>
+    <picker mode="selector" range="{{ bankSeasons }}" value="{{ seasonIndex }}" bindchange="onSeasonPickerChange">
+      <view class="picker">{{ bankSeasons.length ? bankSeasons[seasonIndex] : '暂无季节' }}</view>
+    </picker>
     <view class="label" wx:if="{{ sources[sourceIndex] === 'CUSTOM' }}">自定义话题</view>
     <input wx:if="{{ sources[sourceIndex] === 'CUSTOM' }}" class="input" placeholder="例如：travel / technology" value="{{ customTopic }}" bindinput="onCustomTopic" />
     <button class="btn-primary" loading="{{ busy }}" bindtap="start">开始模拟</button>

@@ -1,4 +1,10 @@
--- H2 / MySQL 通用建表（时间存 epoch 毫秒 BIGINT，便于 MyBatis 映射）
+-- MySQL 建表（时间存 epoch 毫秒 BIGINT，便于 MyBatis 映射）
+--
+-- 说明：若数据库已建表，再次执行本文件不会修改已有表结构。
+-- 后续对表结构的任何变更，请只通过：
+--   - resources/db/schema_alter.sql 中记录 ALTER 语句（可复制执行、便于审计）
+--   - com.speaker.app.bootstrap.SchemaAlterMigration 中按「列不存在则 ALTER」自动执行
+-- 勿依赖修改本文件里的 CREATE TABLE 来更新已存在的库。
 
 CREATE TABLE IF NOT EXISTS users (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -18,7 +24,8 @@ CREATE TABLE IF NOT EXISTS practice_sessions (
     topic_prompt TEXT,
     status VARCHAR(16) NOT NULL,
     started_at BIGINT NOT NULL,
-    ended_at BIGINT
+    ended_at BIGINT,
+    is_deleted TINYINT(1) NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS conversation_turns (
@@ -48,7 +55,9 @@ CREATE TABLE IF NOT EXISTS question_bank_items (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     season_label VARCHAR(32) NOT NULL,
     part VARCHAR(8) NOT NULL,
-    topic VARCHAR(256) NOT NULL,
+    topic VARCHAR(512) NOT NULL,
     question_text TEXT NOT NULL,
+    answer_text TEXT,
+    keywords_json TEXT,
     sort_order INT
 );

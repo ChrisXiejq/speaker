@@ -1,19 +1,13 @@
 spring:
   application:
     name: speaking-killer-api
-  # 默认激活 local，便于使用 application-local.yml（见该文件说明）；无此文件时仍走下方 H2
+  # 仅支持 MySQL：连接信息必须在 application-local.yml 中配置（见 application-local.yml.example）
   profiles:
-    active: ${SPRING_PROFILES_ACTIVE:local}
-  # 默认使用内存 H2，无需本机安装 MySQL 即可启动；也可用 application-local.yml 覆盖为 MySQL
-  datasource:
-    url: jdbc:h2:mem:speaking;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1;CASE_INSENSITIVE_IDENTIFIERS=TRUE
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
+    active: local
   sql:
     init:
       mode: always
-      schema-locations: classpath:schema.sql
+      schema-locations: classpath:db/schema.sql
   servlet:
     multipart:
       max-file-size: 10MB
@@ -21,61 +15,44 @@ spring:
 
 mybatis:
   mapper-locations: classpath:mapper/**/*.xml
-  type-aliases-package: com.speakingkiller.app.model.entity
-  type-handlers-package: com.speakingkiller.app.mybatis.typehandler
+  type-aliases-package: com.speaker.app.model.entity
+  type-handlers-package: com.speaker.app.mybatis.typehandler
   configuration:
     map-underscore-to-camel-case: true
     default-enum-type-handler: org.apache.ibatis.type.EnumTypeHandler
 
 server:
-  port: ${SERVER_PORT:8080}
+  port: 8080
   error:
     include-message: always
 
 app:
   jwt:
-    secret: ${JWT_SECRET:change-me-to-a-long-random-string-at-least-256-bits}
-    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+    secret: change-me-to-a-long-random-string-at-least-256-bits
+    expiration-ms: 86400000
   cors:
-    allowed-origins: ${CORS_ORIGINS:http://localhost:5173}
+    allowed-origins: http://localhost:5173
   security:
     rate-limit:
-      auth-per-minute: ${RATE_AUTH_PER_MIN:20}
-      api-per-minute: ${RATE_API_PER_MIN:120}
-      ai-per-minute: ${RATE_AI_PER_MIN:30}
+      auth-per-minute: 20
+      api-per-minute: 120
+      ai-per-minute: 30
   dashscope:
-    api-key: ${DASHSCOPE_API_KEY:}
-    chat-model: ${QWEN_CHAT_MODEL:qwen-turbo}
-    asr-model: ${QWEN_ASR_MODEL:qwen3-asr-flash}
-    tts-model: ${QWEN_TTS_MODEL:cosyvoice-v3-flash}
-    tts-voice: ${QWEN_TTS_VOICE:longanyang}
-    tts-format: ${QWEN_TTS_FORMAT:mp3}
-    tts-sample-rate: ${QWEN_TTS_SAMPLE_RATE:24000}
-    tts-max-chars: ${QWEN_TTS_MAX_CHARS:8000}
+    api-key: ""
+    chat-model: qwen-turbo
+    asr-model: qwen3-asr-flash
+    tts-model: cosyvoice-v3-flash
+    tts-voice: longanyang
+    tts-format: mp3
+    tts-sample-rate: 24000
+    tts-max-chars: 8000
   wechat:
-    mini-app-id: ${WECHAT_MINI_APP_ID:}
-    mini-app-secret: ${WECHAT_MINI_APP_SECRET:}
-  speaking:
-    current-season: ${SPEAKING_SEASON:2025Q1}
+    mini-app-id: ""
+    mini-app-secret: ""
+  admin:
+    api-key: "jq speaker awsome"
 
 logging:
   level:
-    com.speakingkiller: INFO
+    com.speaker.app: INFO
     org.springframework.security: WARN
-
----
-# 使用 MySQL 时：SPRING_PROFILES_ACTIVE=mysql
-# Aiven 等云库通常要求 SSL：保持 DB_SSL_MODE=REQUIRED（默认）；本机无 SSL 的 MySQL 可设 DB_SSL_MODE=DISABLED
-spring:
-  config:
-    activate:
-      on-profile: mysql
-  datasource:
-    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:speaking_killer}?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&sslMode=${DB_SSL_MODE:REQUIRED}
-    username: ${DB_USER:root}
-    password: ${DB_PASSWORD:}
-    driver-class-name: com.mysql.cj.jdbc.Driver
-  sql:
-    init:
-      mode: always
-      schema-locations: classpath:schema.sql

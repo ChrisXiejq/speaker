@@ -1,29 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.speakingkiller.app.mapper.PracticeSessionMapper">
+<mapper namespace="com.speaker.app.mapper.PracticeSessionMapper">
 
-    <resultMap id="PsMap" type="com.speakingkiller.app.model.entity.PracticeSession">
+    <resultMap id="PsMap" type="com.speaker.app.model.entity.PracticeSession">
         <id column="id" property="id"/>
         <result column="user_id" property="userId"/>
         <result column="part" property="part"
-                javaType="com.speakingkiller.app.model.entity.PracticeSession$Part"
+                javaType="com.speaker.app.model.entity.PracticeSession$Part"
                 typeHandler="org.apache.ibatis.type.EnumTypeHandler"/>
         <result column="topic" property="topic"/>
         <result column="topic_prompt" property="topicPrompt"/>
+        <result column="topic_source" property="topicSource"/>
+        <result column="season_label" property="seasonLabel"/>
+        <result column="allow_ai_expand" property="allowAiExpand"/>
+        <result column="session_state_json" property="sessionStateJson"/>
         <result column="status" property="status"
-                javaType="com.speakingkiller.app.model.entity.PracticeSession$Status"
+                javaType="com.speaker.app.model.entity.PracticeSession$Status"
                 typeHandler="org.apache.ibatis.type.EnumTypeHandler"/>
         <result column="started_at" property="startedAt"
-                typeHandler="com.speakingkiller.app.mybatis.typehandler.InstantMillisTypeHandler"/>
+                typeHandler="com.speaker.app.mybatis.typehandler.InstantMillisTypeHandler"/>
         <result column="ended_at" property="endedAt"
-                typeHandler="com.speakingkiller.app.mybatis.typehandler.InstantMillisTypeHandler"/>
+                typeHandler="com.speaker.app.mybatis.typehandler.InstantMillisTypeHandler"/>
+        <result column="is_deleted" property="isDeleted"/>
     </resultMap>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO practice_sessions (user_id, part, topic, topic_prompt, status, started_at, ended_at)
-        VALUES (#{userId}, #{part}, #{topic}, #{topicPrompt}, #{status},
-                #{startedAt, typeHandler=com.speakingkiller.app.mybatis.typehandler.InstantMillisTypeHandler},
-                #{endedAt, typeHandler=com.speakingkiller.app.mybatis.typehandler.InstantMillisTypeHandler})
+        INSERT INTO practice_sessions (user_id, part, topic, topic_prompt, topic_source, season_label,
+                allow_ai_expand, session_state_json, status, started_at, ended_at, is_deleted)
+        VALUES (#{userId}, #{part}, #{topic}, #{topicPrompt}, #{topicSource}, #{seasonLabel},
+                #{allowAiExpand}, #{sessionStateJson}, #{status},
+                #{startedAt, typeHandler=com.speaker.app.mybatis.typehandler.InstantMillisTypeHandler},
+                #{endedAt, typeHandler=com.speaker.app.mybatis.typehandler.InstantMillisTypeHandler},
+                0)
     </insert>
 
     <update id="update">
@@ -32,24 +40,35 @@
             part = #{part},
             topic = #{topic},
             topic_prompt = #{topicPrompt},
+            topic_source = #{topicSource},
+            season_label = #{seasonLabel},
+            allow_ai_expand = #{allowAiExpand},
+            session_state_json = #{sessionStateJson},
             status = #{status},
-            started_at = #{startedAt, typeHandler=com.speakingkiller.app.mybatis.typehandler.InstantMillisTypeHandler},
-            ended_at = #{endedAt, typeHandler=com.speakingkiller.app.mybatis.typehandler.InstantMillisTypeHandler}
-        WHERE id = #{id}
+            started_at = #{startedAt, typeHandler=com.speaker.app.mybatis.typehandler.InstantMillisTypeHandler},
+            ended_at = #{endedAt, typeHandler=com.speaker.app.mybatis.typehandler.InstantMillisTypeHandler},
+            is_deleted = #{isDeleted}
+        WHERE id = #{id} AND is_deleted = 0
     </update>
 
     <select id="findById" resultMap="PsMap">
-        SELECT * FROM practice_sessions WHERE id = #{id}
+        SELECT * FROM practice_sessions WHERE id = #{id} AND is_deleted = 0
     </select>
 
     <select id="countByUserId" resultType="long">
-        SELECT COUNT(*) FROM practice_sessions WHERE user_id = #{userId}
+        SELECT COUNT(*) FROM practice_sessions WHERE user_id = #{userId} AND is_deleted = 0
     </select>
 
     <select id="findByUserIdOrderByStartedAtDesc" resultMap="PsMap">
         SELECT * FROM practice_sessions
-        WHERE user_id = #{userId}
+        WHERE user_id = #{userId} AND is_deleted = 0
         ORDER BY started_at DESC
         LIMIT #{limit} OFFSET #{offset}
     </select>
+
+    <update id="softDeleteByIdForUser">
+        UPDATE practice_sessions
+        SET is_deleted = 1
+        WHERE id = #{id} AND user_id = #{userId} AND is_deleted = 0
+    </update>
 </mapper>

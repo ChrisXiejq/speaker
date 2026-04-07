@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.speakingkiller.app.mapper.UserMapper">
+<mapper namespace="com.speaker.app.mapper.UserMapper">
 
-    <resultMap id="UserMap" type="com.speakingkiller.app.model.entity.User">
+    <resultMap id="UserMap" type="com.speaker.app.model.entity.User">
         <id column="id" property="id"/>
         <result column="username" property="username"/>
         <result column="password_hash" property="passwordHash"/>
         <result column="wechat_openid" property="wechatOpenid"/>
         <result column="created_at" property="createdAt"
-                typeHandler="com.speakingkiller.app.mybatis.typehandler.InstantMillisTypeHandler"/>
+                typeHandler="com.speaker.app.mybatis.typehandler.InstantMillisTypeHandler"/>
     </resultMap>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO users (username, password_hash, wechat_openid, created_at)
         VALUES (#{username}, #{passwordHash}, #{wechatOpenid},
-                #{createdAt, typeHandler=com.speakingkiller.app.mybatis.typehandler.InstantMillisTypeHandler})
+                #{createdAt, typeHandler=com.speaker.app.mybatis.typehandler.InstantMillisTypeHandler})
     </insert>
 
     <select id="findByUsername" resultMap="UserMap">

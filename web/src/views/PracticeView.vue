@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, nextTick, computed } from 'vue'
+import { ref, watch, nextTick, computed, onMounted } from 'vue'
 import { http } from '@/api/http'
 import {
   speakEnglish,
@@ -9,13 +9,36 @@ import {
   SPEECH_SILENCE_MS_BEFORE_SUBMIT,
 } from '@/utils/speech'
 
-const PARTS = ['PART1', 'PART2', 'PART3']
+/** 与后端 PracticeSession.Part 一致：PART1 | PART2_AND_3 */
+const PART_API = ['PART1', 'PART2_AND_3']
+const PART_LABEL = ['Part 1', 'Part 2 & 3']
 const SOURCES = ['BANK', 'CUSTOM']
+
+function parseKeywords(json) {
+  if (!json) return []
+  try {
+    const arr = JSON.parse(json)
+    return Array.isArray(arr) ? arr : []
+  } catch {
+    return []
+  }
+}
 
 const partIndex = ref(0)
 const sourceIndex = ref(0)
-const season = ref('2025Q1')
+/** 与 /api/bank/seasons 一致，首项为当前日期下的默认季 */
+const bankSeasons = ref([])
+const season = ref('')
 const customTopic = ref('')
+/** 仅题库模式：是否允许问完本题话题库题后由 AI 扩展提问 */
+const allowAiExpand = ref(false)
+const bankTopicFlow = ref(false)
+const practicePhase = ref('')
+const referenceAnswer = ref('')
+const keywordsJson = ref('')
+const canAdvanceTopic = ref(false)
+const aiExpandedQuestion = ref(false)
+
 const sessionId = ref(0)
 const examinerLine = ref('')
 const topic = ref('')
@@ -44,11 +67,34 @@ watch(examinerLine, (line) => {
   })
 })
 
+async function loadBankSeasons() {
+  try {
+    const { data } = await http.get('/api/bank/seasons')
+    bankSeasons.value = Array.isArray(data) ? data : []
+    if (bankSeasons.value.length) {
+      season.value = bankSeasons.value[0]
+    } else {
+      season.value = ''
+    }
+  } catch {
+    bankSeasons.value = []
+    season.value = ''
+  }
+}
+
+onMounted(() => {
+  loadBankSeasons()
+})
+
 async function start() {
-  const part = PARTS[partIndex.value]
+  const part = PART_API[partIndex.value]
   const topicSource = SOURCES[sourceIndex.value]
   if (topicSource === 'CUSTOM' && !customTopic.value.trim()) {
     alert('请输入自定义话题')
+    return
+  }
+  if (topicSource === 'BANK' && !season.value?.trim()) {
+    alert('题库暂无可用季节，请先在管理端导入当季题目')
     return
   }
   loading.value = true
@@ -62,10 +108,17 @@ async function start() {
       bankQuestionId: null,
     }
     if (topicSource === 'CUSTOM') body.customTopic = customTopic.value.trim()
+    if (topicSource === 'BANK') body.allowAiExpand = allowAiExpand.value
     const { data } = await http.post('/api/practice/sessions', body)
     sessionId.value = data.sessionId
     examinerLine.value = data.examinerLine
     topic.value = data.topic
+    bankTopicFlow.value = !!data.bankTopicFlow
+    practicePhase.value = data.practicePhase ?? ''
+    referenceAnswer.value = data.referenceAnswer ?? ''
+    keywordsJson.value = data.keywordsJson ?? ''
+    canAdvanceTopic.value = false
+    aiExpandedQuestion.value = false
     lastBrief.value = ''
     started.value = true
   } catch (e) {
@@ -78,6 +131,44 @@ async function start() {
 function playExaminerBrowser() {
   if (!examinerLine.value) return
   speakEnglish(examinerLine.value)
+}
+
+async function nextTopic() {
+  if (!sessionId.value || loading.value) return
+  loading.value = true
+  try {
+    const { data } = await http.post(`/api/practice/sessions/${sessionId.value}/next-topic`)
+    examinerLine.value = data.examinerLine
+    topic.value = data.topic
+    referenceAnswer.value = data.referenceAnswer ?? ''
+    keywordsJson.value = data.keywordsJson ?? ''
+    practicePhase.value = data.practicePhase ?? ''
+    canAdvanceTopic.value = false
+    aiExpandedQuestion.value = false
+    lastRecognizedText.value = ''
+  } catch (e) {
+    alert(e.message)
+  } finally {
+    loading.value = false
+  }
+}
+
+function applyReplyMeta(data) {
+  examinerLine.value = data.examinerLine
+  lastBrief.value = data.briefEval
+  referenceAnswer.value = data.referenceAnswer ?? ''
+  keywordsJson.value = data.keywordsJson ?? ''
+  practicePhase.value = data.practicePhase ?? ''
+  canAdvanceTopic.value = !!data.canAdvanceTopic
+  aiExpandedQuestion.value = !!data.aiExpandedQuestion
+  if (data.shouldEnd) {
+    const ok = window.confirm('模型建议可结束本轮，是否生成完整评价？')
+    if (ok) void finish()
+  }
+  if (data.strictTopicFinished) {
+    const ok = window.confirm('本题话题库题已问完，是否进入下一话题？')
+    if (ok) void nextTopic()
+  }
 }
 
 /**
@@ -93,12 +184,7 @@ async function submitReply(text) {
     const { data } = await http.post(`/api/practice/sessions/${sessionId.value}/reply`, {
       userText: trimmed,
     })
-    examinerLine.value = data.examinerLine
-    lastBrief.value = data.briefEval
-    if (data.shouldEnd) {
-      const ok = window.confirm('模型建议可结束本轮，是否生成完整评价？')
-      if (ok) await finish()
-    }
+    applyReplyMeta(data)
   } catch (e) {
     alert(e.message)
   } finally {
@@ -267,6 +353,12 @@ function reset() {
   report.value = null
   speechHint.value = ''
   recording.value = false
+  bankTopicFlow.value = false
+  practicePhase.value = ''
+  referenceAnswer.value = ''
+  keywordsJson.value = ''
+  canAdvanceTopic.value = false
+  aiExpandedQuestion.value = false
 }
 </script>
 
@@ -276,14 +368,24 @@ function reset() {
       <h2>开始模拟</h2>
       <label>Part</label>
       <select v-model.number="partIndex" class="input">
-        <option v-for="(p, i) in PARTS" :key="p" :value="i">{{ p }}</option>
+        <option v-for="(label, i) in PART_LABEL" :key="PART_API[i]" :value="i">{{ label }}</option>
       </select>
       <label>题目来源</label>
       <select v-model.number="sourceIndex" class="input">
         <option v-for="(s, i) in SOURCES" :key="s" :value="i">{{ s }}</option>
       </select>
-      <label>季节标签（题库模式）</label>
-      <input v-model="season" class="input" type="text" />
+      <label>季节（题库模式）</label>
+      <select v-model="season" class="input" :disabled="!bankSeasons.length">
+        <option v-if="!bankSeasons.length" disabled value="">暂无季节</option>
+        <option v-for="s in bankSeasons" :key="s" :value="s">{{ s }}</option>
+      </select>
+      <p v-if="SOURCES[sourceIndex] === 'BANK' && !bankSeasons.length" class="muted small">
+        暂无季节数据，请先在管理端导入题目。
+      </p>
+      <label v-if="SOURCES[sourceIndex] === 'BANK'" class="switch-row">
+        <input v-model="allowAiExpand" type="checkbox" />
+        <span>允许 AI 扩展题库（先问完本题话题库题，再扩展提问并标注「此问题为AI扩展」）</span>
+      </label>
       <template v-if="SOURCES[sourceIndex] === 'CUSTOM'">
         <label>自定义话题</label>
         <input v-model="customTopic" class="input" type="text" placeholder="例如 travel / technology" />
@@ -297,8 +399,16 @@ function reset() {
       <div class="card">
         <p class="muted">Topic</p>
         <p class="block">{{ topic }}</p>
+        <p v-if="aiExpandedQuestion" class="badge-ai">此问题为 AI 扩展</p>
         <p class="muted mt">考官</p>
         <p class="block">{{ examinerLine }}</p>
+        <details v-if="bankTopicFlow && (referenceAnswer || parseKeywords(keywordsJson).length)" class="ref-box">
+          <summary>参考答案与关键词</summary>
+          <p v-if="referenceAnswer" class="answer">{{ referenceAnswer }}</p>
+          <ul v-if="parseKeywords(keywordsJson).length" class="kw">
+            <li v-for="(k, i) in parseKeywords(keywordsJson)" :key="i">{{ k }}</li>
+          </ul>
+        </details>
         <template v-if="lastBrief">
           <p class="muted mt">上一答简评</p>
           <p class="block">{{ lastBrief }}</p>
@@ -329,6 +439,15 @@ function reset() {
           </button>
         </div>
         <p v-if="speechHint" class="speech-hint">{{ speechHint }}</p>
+
+        <div
+          v-if="bankTopicFlow && (canAdvanceTopic || practicePhase === 'AWAIT_NEXT_TOPIC')"
+          class="row-btns"
+        >
+          <button type="button" class="btn outline row-btn" :disabled="loading" @click="nextTopic">
+            进入下一话题
+          </button>
+        </div>
 
         <template v-if="lastRecognizedText">
           <p class="muted">识别并提交的回答</p>
@@ -415,6 +534,60 @@ label {
   line-height: 1.65;
   color: #e2e8f0;
   white-space: pre-wrap;
+}
+
+.switch-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0;
+  font-size: 0.88rem;
+  color: #cbd5e1;
+  line-height: 1.45;
+}
+
+.switch-row input {
+  margin-top: 0.2rem;
+}
+
+.badge-ai {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  color: #fbbf24;
+}
+
+.ref-box {
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(2, 6, 23, 0.35);
+}
+
+.ref-box summary {
+  cursor: pointer;
+  color: #94a3b8;
+  font-size: 0.88rem;
+}
+
+.ref-box .answer {
+  margin: 0.5rem 0 0;
+  color: #cbd5e1;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.ref-box .kw {
+  margin: 0.35rem 0 0;
+  padding-left: 1.1rem;
+  color: #a5b4fc;
+  font-size: 0.88rem;
+}
+
+.small {
+  font-size: 0.85rem;
+  margin: 0.35rem 0 0;
+  color: #94a3b8;
 }
 
 .hint {

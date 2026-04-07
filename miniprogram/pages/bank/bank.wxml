@@ -1,18 +1,44 @@
 <view class="wrap">
   <view class="card">
     <view class="label">季节</view>
-    <picker mode="selector" range="{{ seasons }}" value="{{ seasonIndex }}" bindchange="onSeasonChange">
-      <view class="picker">{{ seasons[seasonIndex] }}</view>
+    <picker mode="selector" range="{{ seasons }}" value="{{ seasonIndex }}" bindchange="onSeasonChange" disabled="{{ !seasons.length }}">
+      <view class="picker">{{ seasons.length ? seasons[seasonIndex] : '暂无季节' }}</view>
     </picker>
     <view class="label">Part</view>
-    <picker mode="selector" range="{{ parts }}" value="{{ partIndex }}" bindchange="onPartChange">
-      <view class="picker">{{ parts[partIndex] }}</view>
+    <picker mode="selector" range="{{ partLabels }}" value="{{ partIndex }}" bindchange="onPartChange">
+      <view class="picker">{{ partLabels[partIndex] }}</view>
     </picker>
   </view>
 
-  <view wx:if="{{ !items.length }}" class="muted empty">暂无题目</view>
-  <view class="item" wx:for="{{ items }}" wx:key="id">
-    <view class="topic">{{ item.topic }}</view>
-    <view class="q">{{ item.questionText }}</view>
-  </view>
+  <view wx:if="{{ !seasons.length }}" class="muted empty">题库中暂无季节数据，请先在管理端导入</view>
+  <view wx:elif="{{ !topicGroups.length }}" class="muted empty">暂无题目</view>
+
+  <block wx:for="{{ topicGroups }}" wx:for-item="grp" wx:key="topic">
+    <view class="topic-block">
+      <view class="part-badge">{{ partLabels[partIndex] }}</view>
+      <view class="topic-title">{{ grp.topic }}</view>
+
+      <block wx:if="{{ partIndex === 1 }}">
+        <view wx:if="{{ grp.part2Questions && grp.part2Questions.length }}" class="sub-part">
+          <view class="sub-title">Part 2</view>
+          <view class="q-row" wx:for="{{ grp.part2Questions }}" wx:for-item="q" wx:key="id">
+            <view class="q">{{ q.questionText }}</view>
+          </view>
+        </view>
+        <view wx:if="{{ grp.part3Questions && grp.part3Questions.length }}" class="sub-part">
+          <view class="sub-title">Part 3</view>
+          <view class="muted sub-hint">基于 Part 2 的延伸讨论</view>
+          <view class="q-row" wx:for="{{ grp.part3Questions }}" wx:for-item="q" wx:key="id">
+            <view class="q">{{ q.questionText }}</view>
+          </view>
+        </view>
+      </block>
+
+      <block wx:else>
+        <view class="q-row" wx:for="{{ grp.questions }}" wx:for-item="q" wx:key="id">
+          <view class="q">{{ q.questionText }}</view>
+        </view>
+      </block>
+    </view>
+  </block>
 </view>

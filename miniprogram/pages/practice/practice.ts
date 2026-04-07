@@ -25,16 +25,18 @@ type Report = {
   suggestionsJson: string;
 };
 
-const PARTS = ["PART1", "PART2", "PART3"];
+const PART_API = ["PART1", "PART2_AND_3"];
+const PART_LABELS = ["Part 1", "Part 2 & 3"];
 const SOURCES = ["BANK", "CUSTOM"];
 
 Page({
   data: {
     partIndex: 0,
     sourceIndex: 0,
-    parts: PARTS,
+    partLabels: PART_LABELS,
     sources: SOURCES,
-    season: "2025Q1",
+    bankSeasons: [] as string[],
+    seasonIndex: 0,
     customTopic: "",
     sessionId: 0 as number,
     examinerLine: "",
@@ -68,6 +70,19 @@ Page({
       this.setData({ recording: false });
       wx.showToast({ title: "录音失败", icon: "none" });
     });
+    void this.loadBankSeasons();
+  },
+
+  async loadBankSeasons() {
+    try {
+      const seasons = await request<string[]>("/api/bank/seasons", "GET");
+      this.setData({
+        bankSeasons: seasons.length ? seasons : [],
+        seasonIndex: 0,
+      });
+    } catch {
+      this.setData({ bankSeasons: [], seasonIndex: 0 });
+    }
   },
 
   onUnload() {
@@ -76,8 +91,8 @@ Page({
     this.innerAudio = null;
   },
 
-  onSeason(e: WechatMiniprogram.Input) {
-    this.setData({ season: e.detail.value });
+  onSeasonPickerChange(e: WechatMiniprogram.PickerChange) {
+    this.setData({ seasonIndex: Number(e.detail.value) });
   },
   onCustomTopic(e: WechatMiniprogram.Input) {
     this.setData({ customTopic: e.detail.value });
@@ -140,10 +155,15 @@ Page({
   },
 
   async start() {
-    const part = PARTS[this.data.partIndex];
+    const part = PART_API[this.data.partIndex];
     const topicSource = SOURCES[this.data.sourceIndex];
     if (topicSource === "CUSTOM" && !this.data.customTopic.trim()) {
       wx.showToast({ title: "请输入自定义话题", icon: "none" });
+      return;
+    }
+    const season = this.data.bankSeasons[this.data.seasonIndex] || "";
+    if (topicSource === "BANK" && !season) {
+      wx.showToast({ title: "题库暂无可用季节，请先导入", icon: "none" });
       return;
     }
     this.setData({ busy: true });
@@ -151,7 +171,7 @@ Page({
       const body: Record<string, unknown> = {
         part,
         topicSource,
-        season: this.data.season,
+        season,
         bankQuestionId: null,
       };
       if (topicSource === "CUSTOM") {

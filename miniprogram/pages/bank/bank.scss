@@ -21,21 +21,46 @@
   padding: 60rpx 0;
 }
 
-.item {
+.topic-block {
   background: rgba(15, 23, 42, 0.9);
   border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: 16rpx;
   padding: 22rpx;
-  margin-bottom: 16rpx;
+  margin-bottom: 20rpx;
 }
 
-.topic {
+.part-badge {
+  display: inline-block;
+  font-size: 22rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  background: rgba(51, 65, 85, 0.95);
+  color: #94a3b8;
+  margin-bottom: 12rpx;
+}
+
+.topic-title {
   font-weight: 700;
-  margin-bottom: 10rpx;
+  font-size: 32rpx;
+  margin-bottom: 16rpx;
   color: #f8fafc;
+}
+
+.q-row {
+  padding-top: 16rpx;
+  margin-top: 16rpx;
+  border-top: 1px solid rgba(51, 65, 85, 0.55);
+}
+
+/* 话题下第一道题：紧接在标题后，不画顶部分隔线 */
+.topic-title + .q-row {
+  border-top: none;
+  margin-top: 0;
+  padding-top: 0;
 }
 
 .q {
   color: #cbd5e1;
   line-height: 1.6;
+  font-size: 28rpx;
 }

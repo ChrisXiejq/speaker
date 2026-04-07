@@ -1,0 +1,22 @@
+-- =============================================================================
+-- 已有数据库结构变更记录（与 SchemaAlterMigration.java 保持同步）
+-- =============================================================================
+-- 约定：
+-- 1. 新库首次部署：以 classpath:schema.sql 建表即可。
+-- 2. 已在线上/本机跑过的库：一律通过 ALTER 演进，不要指望改 schema.sql 能自动改表。
+-- 3. 每次加列/改列：在本文件追加一条注释说明 + 可复制执行的 ALTER；
+--    同时在 SchemaAlterMigration 中增加「缺则执行」的逻辑，保证启动时自动升级。
+-- =============================================================================
+
+-- question_bank_items：题库参考答案与关键词（若列已存在会报错，仅作手工/审计参考）
+-- ALTER TABLE question_bank_items ADD COLUMN answer_text TEXT NULL;
+-- ALTER TABLE question_bank_items ADD COLUMN keywords_json TEXT NULL;
+-- ALTER TABLE question_bank_items MODIFY COLUMN topic VARCHAR(512) NOT NULL;
+-- ALTER TABLE question_bank_items ADD COLUMN is_deleted TINYINT(1) NOT NULL DEFAULT 0;
+
+-- practice_sessions：题库对练流程（按话题顺序 / AI 扩展 / 下一话题）
+-- ALTER TABLE practice_sessions ADD COLUMN topic_source VARCHAR(16) NULL;
+-- ALTER TABLE practice_sessions ADD COLUMN season_label VARCHAR(64) NULL;
+-- ALTER TABLE practice_sessions ADD COLUMN allow_ai_expand TINYINT(1) NOT NULL DEFAULT 0;
+-- ALTER TABLE practice_sessions ADD COLUMN session_state_json TEXT NULL;
+-- ALTER TABLE practice_sessions ADD COLUMN is_deleted TINYINT(1) NOT NULL DEFAULT 0;

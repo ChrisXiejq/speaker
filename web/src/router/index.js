@@ -30,6 +30,21 @@ const routes = [
     component: () => import('@/views/BankView.vue'),
   },
   {
+    path: '/admin',
+    name: 'admin',
+    component: () => import('@/views/AdminHomeView.vue'),
+  },
+  {
+    path: '/admin/bank',
+    name: 'admin-bank',
+    component: () => import('@/views/AdminBankView.vue'),
+  },
+  {
+    path: '/admin/bank/manage',
+    name: 'admin-bank-manage',
+    component: () => import('@/views/AdminBankManageView.vue'),
+  },
+  {
     path: '/session/:id',
     name: 'session-detail',
     component: () => import('@/views/SessionDetailView.vue'),

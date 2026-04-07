@@ -2,7 +2,7 @@
 
 本仓库包含：
 
-- `backend/`：Spring Boot 3 + **MyBatis** + **JWT** + 通义千问（DashScope）+ 限流；**默认嵌入式 H2**（无需本机 MySQL 即可启动），可选 **mysql** profile 连接 MySQL
+- `backend/`：Spring Boot 3 + **MyBatis** + **JWT** + 通义千问（DashScope）+ 限流；**仅连接 MySQL**（通过 `application-local.yml` 配置云库或自建库，密码与密钥写在文件内，不使用环境变量）
 - `web/`：**Vue 3 + JavaScript + Vite** 浏览器端 SPA，对接同一套 API（开发时代理到 `localhost:8080`）
 - `miniprogram/`：微信小程序前端（TypeScript），对接上述 API
 
@@ -11,18 +11,16 @@
 ## 后端运行
 
 1. 安装 **JDK 17**、**Maven**。
-2. **本地私密配置（推荐，不写环境变量）**：将 `backend/src/main/resources/application-local.yml.example` 复制为同目录下的 `application-local.yml`，填写 **Aiven 数据库密码**、`app.jwt.secret`、`app.dashscope.api-key` 等。该文件已加入 `.gitignore`，不会被提交。默认已激活 `local` profile。
-3. **若不用 `application-local.yml`**：不连 MySQL 时可直接启动，使用内存 **H2**（表结构由 `schema.sql` 初始化）。
-4. **若坚持用环境变量连 MySQL**：可设 `SPRING_PROFILES_ACTIVE=mysql` 并配置 `DB_*`（见 `application.yml` 中 `mysql` profile）；云库 SSL 见 `DB_SSL_MODE`。
-5. 启动：
+2. **必须**：将 `backend/src/main/resources/application-local.yml.example` 复制为同目录下的 `application-local.yml`，填写 **MySQL 连接串、用户名、密码**、`app.jwt.secret`、`app.dashscope.api-key`、微信小程序 `appid`/`secret` 等；无此文件或未配置有效 MySQL 则**无法启动**。该文件已加入 `.gitignore`，不会被提交。默认已激活 `local` profile。
+3. 启动：
 
 ```bash
 cd backend
 mvn spring-boot:run
 ```
 
-6. 健康检查：`GET http://localhost:8080/api/health`
-7. **浏览器端联调**：后端默认 `CORS_ORIGINS` 已包含 `http://localhost:5173`；若你改了前端端口，请在环境变量中同步 `CORS_ORIGINS`。
+4. 健康检查：`GET http://localhost:8080/api/health`
+5. **浏览器端联调**：后端默认 `app.cors.allowed-origins` 为 `http://localhost:5173`；若你改了前端端口，请在 `application-local.yml` 中覆盖 `app.cors.allowed-origins`。
 
 ## Web 端（Vue）运行
 
@@ -36,7 +34,7 @@ npm run dev
 ```
 
 3. 浏览器打开终端里提示的地址（一般为 `http://localhost:5173`）。Vite 会把 `/api` 代理到 `http://localhost:8080`，无需改前端代码即可联调。
-4. **生产构建**：复制 `web/.env.production.example` 为 `web/.env.production`，设置 `VITE_API_BASE` 为线上 API 根地址，然后执行 `npm run build`，将 `web/dist` 部署到任意静态站点（Nginx、OSS、Vercel 等），并在后端 `CORS_ORIGINS` 中允许该站点来源。
+4. **生产构建**：复制 `web/.env.production.example` 为 `web/.env.production`，设置 `VITE_API_BASE` 为线上 API 根地址，然后执行 `npm run build`，将 `web/dist` 部署到任意静态站点（Nginx、OSS、Vercel 等），并在后端 `application-local.yml` 的 `app.cors.allowed-origins` 中允许该站点来源。
 
 ## 小程序运行
 
