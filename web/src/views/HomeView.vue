@@ -1,8 +1,39 @@
 <script setup>
+import { ref, watch, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { http } from '@/api/http'
+import { toastError } from '@/utils/toast'
+import PracticeDashboard from '@/components/PracticeDashboard.vue'
 
 const auth = useAuthStore()
+const stats = ref(null)
+const loadingStats = ref(false)
+
+async function loadDashboard() {
+  if (!auth.isLoggedIn) {
+    stats.value = null
+    return
+  }
+  loadingStats.value = true
+  try {
+    const { data } = await http.get('/api/practice/stats/dashboard')
+    stats.value = data
+  } catch (e) {
+    toastError(e.message || '加载练习统计失败')
+    stats.value = null
+  } finally {
+    loadingStats.value = false
+  }
+}
+
+onMounted(loadDashboard)
+watch(
+  () => auth.isLoggedIn,
+  () => {
+    void loadDashboard()
+  },
+)
 </script>
 
 <template>
@@ -18,6 +49,12 @@ const auth = useAuthStore()
       <p class="hero-sub">英式考官风格 · Part 1/2/3 · 通义千问驱动</p>
       <p v-if="!auth.isLoggedIn" class="hint">请先登录以使用对练与记录</p>
     </el-card>
+
+    <PracticeDashboard
+      v-if="auth.isLoggedIn"
+      :stats="stats"
+      :loading="loadingStats"
+    />
 
     <el-row :gutter="16" class="grid">
       <el-col :xs="24" :sm="12" :md="8">
