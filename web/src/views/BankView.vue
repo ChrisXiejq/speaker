@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue'
 import { http } from '@/api/http'
+import { toastError } from '@/utils/toast'
 
 /** 请求参数：PART1 | PART2_AND_3 */
 const PART_API = ['PART1', 'PART2_AND_3']
@@ -33,7 +34,7 @@ async function loadSeasons() {
     seasonIndex.value = 0
     await loadQuestions()
   } catch (e) {
-    alert(e.message)
+    toastError(e.message || '加载季节失败')
   } finally {
     loading.value = false
   }
@@ -53,7 +54,7 @@ async function loadQuestions() {
     })
     topicGroups.value = data || []
   } catch (e) {
-    alert(e.message)
+    toastError(e.message || '加载题目失败')
   } finally {
     loading.value = false
   }

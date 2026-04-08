@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { http } from '@/api/http'
+import { toastError } from '@/utils/toast'
 
 const route = useRoute()
 const detail = ref(null)
@@ -15,7 +16,7 @@ async function load(id) {
     const { data } = await http.get(`/api/practice/sessions/${id}`)
     detail.value = data
   } catch (e) {
-    alert(e.message)
+    toastError(e.message || '加载详情失败')
   } finally {
     loading.value = false
   }
@@ -31,6 +32,13 @@ function formatPartLabel(p) {
   if (p === 'PART2_AND_3') return 'Part 2 & 3'
   return p ?? ''
 }
+
+function formatEpochMs(v) {
+  if (v == null || v === '') return ''
+  const n = typeof v === 'number' ? v : Number(v)
+  if (Number.isNaN(n)) return String(v)
+  return new Date(n).toLocaleString()
+}
 </script>
 
 <template>
@@ -43,7 +51,7 @@ function formatPartLabel(p) {
           <span class="muted small">{{ detail.session.status }}</span>
         </div>
         <p class="topic">{{ detail.session.topic || '（无主题）' }}</p>
-        <p class="muted small">{{ detail.session.startedAt }}</p>
+        <p class="muted small">{{ formatEpochMs(detail.session.startedAt) }}</p>
       </div>
 
       <div v-if="detail.report" class="card">

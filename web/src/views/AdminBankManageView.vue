@@ -2,6 +2,7 @@
 import { ref, watch, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { http } from '@/api/http'
+import { toastSuccess } from '@/utils/toast'
 
 const adminKey = ref(localStorage.getItem('sk_admin_key') ?? '')
 const seasons = ref([])
@@ -162,7 +163,7 @@ async function softDeleteEntireSeason() {
     await loadSeasons()
     seasonIndex.value = 0
     await loadItems()
-    window.alert(n ? `已软删除 ${n} 条题目` : '该季节下没有可删题目（可能已全部删除）')
+    toastSuccess(n ? `已软删除 ${n} 条题目` : '该季节下没有可删题目（可能已全部删除）')
   } catch (e) {
     error.value = e.message || String(e)
   } finally {

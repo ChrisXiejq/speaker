@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { http } from '@/api/http'
+import { toastError } from '@/utils/toast'
 
 const router = useRouter()
 const list = ref([])
@@ -15,7 +16,7 @@ async function load() {
     })
     list.value = data.content || []
   } catch (e) {
-    alert(e.message)
+    toastError(e.message || '加载记录失败')
   } finally {
     loading.value = false
   }
@@ -32,13 +33,21 @@ async function removeSession(id, e) {
     await http.delete(`/api/practice/sessions/${id}`)
     list.value = list.value.filter((x) => x.id !== id)
   } catch (err) {
-    alert(err.message || '删除失败')
+    toastError(err.message || '删除失败')
   }
 }
 
 function formatPartLabel(p) {
   if (p === 'PART2_AND_3') return 'Part 2 & 3'
   return p ?? ''
+}
+
+/** API 返回 epoch 毫秒（number） */
+function formatEpochMs(v) {
+  if (v == null || v === '') return ''
+  const n = typeof v === 'number' ? v : Number(v)
+  if (Number.isNaN(n)) return String(v)
+  return new Date(n).toLocaleString()
 }
 
 onMounted(load)
@@ -66,7 +75,7 @@ onMounted(load)
         </span>
       </div>
       <p class="topic">{{ item.topic || '（无主题）' }}</p>
-      <p class="muted small">{{ item.startedAt }}</p>
+      <p class="muted small">{{ formatEpochMs(item.startedAt) }}</p>
     </div>
   </div>
 </template>

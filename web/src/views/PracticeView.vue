@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch, nextTick, computed, onMounted } from 'vue'
 import { http } from '@/api/http'
+import { toastError, toastWarning } from '@/utils/toast'
 import {
   speakEnglish,
   getRecognition,
@@ -76,9 +77,10 @@ async function loadBankSeasons() {
     } else {
       season.value = ''
     }
-  } catch {
+  } catch (e) {
     bankSeasons.value = []
     season.value = ''
+    toastError(e?.message || '加载题库季节失败')
   }
 }
 
@@ -90,11 +92,11 @@ async function start() {
   const part = PART_API[partIndex.value]
   const topicSource = SOURCES[sourceIndex.value]
   if (topicSource === 'CUSTOM' && !customTopic.value.trim()) {
-    alert('请输入自定义话题')
+    toastWarning('请输入自定义话题')
     return
   }
   if (topicSource === 'BANK' && !season.value?.trim()) {
-    alert('题库暂无可用季节，请先在管理端导入当季题目')
+    toastWarning('题库暂无可用季节，请先在管理端导入当季题目')
     return
   }
   loading.value = true
@@ -122,7 +124,7 @@ async function start() {
     lastBrief.value = ''
     started.value = true
   } catch (e) {
-    alert(e.message)
+    toastError(e.message || '开始练习失败')
   } finally {
     loading.value = false
   }
@@ -147,7 +149,7 @@ async function nextTopic() {
     aiExpandedQuestion.value = false
     lastRecognizedText.value = ''
   } catch (e) {
-    alert(e.message)
+    toastError(e.message || '切换话题失败')
   } finally {
     loading.value = false
   }
@@ -186,7 +188,7 @@ async function submitReply(text) {
     })
     applyReplyMeta(data)
   } catch (e) {
-    alert(e.message)
+    toastError(e.message || '提交回答失败')
   } finally {
     loading.value = false
   }
@@ -195,7 +197,7 @@ async function submitReply(text) {
 function listenBrowser() {
   const R = getRecognition()
   if (!R) {
-    alert('当前浏览器不支持 Web Speech 识别，请改用「录音上传 ASR」')
+    toastWarning('当前浏览器不支持 Web Speech 识别，请改用「录音上传 ASR」')
     return
   }
   if (loading.value) return
@@ -277,14 +279,14 @@ function listenBrowser() {
   } catch {
     clearSilenceTimer()
     speechHint.value = ''
-    alert('无法启动识别，请稍后重试')
+    toastError('无法启动识别，请稍后重试')
   }
 }
 
 async function toggleRecordUpload() {
   if (!recording.value) {
     if (!navigator.mediaDevices?.getUserMedia) {
-      alert('无法访问麦克风，请检查权限')
+      toastWarning('无法访问麦克风，请检查权限')
       return
     }
     recordStream = await navigator.mediaDevices.getUserMedia({ audio: true })
@@ -321,10 +323,10 @@ async function uploadAsrBlob(blob) {
     if (data.text?.trim()) {
       await submitReply(data.text)
     } else {
-      alert('未识别到有效内容，请重试')
+      toastWarning('未识别到有效内容，请重试')
     }
   } catch (e) {
-    alert(e.message)
+    toastError(e.message || '语音识别失败')
   } finally {
     loading.value = false
   }
@@ -337,7 +339,7 @@ async function finish() {
     const { data } = await http.post(`/api/practice/sessions/${sessionId.value}/complete`)
     report.value = data
   } catch (e) {
-    alert(e.message)
+    toastError(e.message || '生成评价失败')
   } finally {
     loading.value = false
   }
