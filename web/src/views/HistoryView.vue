@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessageBox } from 'element-plus'
 import { http } from '@/api/http'
 import { toastError } from '@/utils/toast'
 
@@ -28,7 +29,15 @@ function openDetail(id) {
 
 async function removeSession(id, e) {
   e.stopPropagation()
-  if (!confirm('确定删除这条练习记录？删除后列表中不再显示。')) return
+  try {
+    await ElMessageBox.confirm('确定删除这条练习记录？删除后列表中不再显示。', '确认删除', {
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+  } catch {
+    return
+  }
   try {
     await http.delete(`/api/practice/sessions/${id}`)
     list.value = list.value.filter((x) => x.id !== id)
@@ -54,57 +63,67 @@ onMounted(load)
 </script>
 
 <template>
-  <div>
-    <h2 class="title">历史记录</h2>
-    <p v-if="loading" class="muted">加载中…</p>
-    <p v-else-if="!list.length" class="muted empty">暂无记录</p>
-    <div
+  <div class="page">
+    <h2 class="page-title">历史记录</h2>
+    <el-skeleton v-if="loading" animated :rows="4" />
+    <el-empty v-else-if="!list.length" description="暂无记录" />
+    <el-card
       v-for="item in list"
+      v-else
       :key="item.id"
-      class="card item"
+      class="item-card"
+      shadow="hover"
       role="button"
       tabindex="0"
       @click="openDetail(item.id)"
       @keyup.enter="openDetail(item.id)"
     >
       <div class="row">
-        <span class="tag">{{ formatPartLabel(item.part) }}</span>
-        <span class="row-right">
-          <span class="muted small">{{ item.status }}</span>
-          <button type="button" class="del-btn" @click="removeSession(item.id, $event)">删除</button>
-        </span>
+        <el-tag type="success" effect="plain" round>{{ formatPartLabel(item.part) }}</el-tag>
+        <div class="row-right">
+          <span class="status muted">{{ item.status }}</span>
+          <el-button type="danger" plain size="small" round @click="removeSession(item.id, $event)">
+            删除
+          </el-button>
+        </div>
       </div>
       <p class="topic">{{ item.topic || '（无主题）' }}</p>
       <p class="muted small">{{ formatEpochMs(item.startedAt) }}</p>
-    </div>
+    </el-card>
   </div>
 </template>
 
 <style scoped>
-.title {
+.page {
+  width: 100%;
+}
+
+.page-title {
   margin: 0 0 1rem;
-  color: #f8fafc;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #ecfdf5;
 }
 
-.empty {
-  text-align: center;
-  padding: 2rem;
-}
-
-.item {
-  cursor: pointer;
+.item-card {
   margin-bottom: 0.75rem;
-  transition: border-color 0.15s;
+  cursor: pointer;
+  border-radius: 14px;
+  transition:
+    border-color 0.2s ease,
+    transform 0.15s ease;
 }
 
-.item:hover {
-  border-color: rgba(56, 189, 248, 0.4);
+.item-card:hover {
+  border-color: rgba(74, 222, 128, 0.45) !important;
+  transform: translateY(-1px);
 }
 
 .row {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 0.5rem;
 }
 
 .row-right {
@@ -113,35 +132,22 @@ onMounted(load)
   gap: 0.5rem;
 }
 
-.del-btn {
-  font-size: 0.75rem;
-  padding: 0.15rem 0.45rem;
-  border-radius: 6px;
-  border: 1px solid rgba(248, 113, 113, 0.45);
-  background: rgba(127, 29, 29, 0.35);
-  color: #fecaca;
-  cursor: pointer;
-}
-
-.del-btn:hover {
-  border-color: rgba(248, 113, 113, 0.75);
-  background: rgba(127, 29, 29, 0.55);
-}
-
-.tag {
-  font-size: 0.75rem;
-  padding: 0.2rem 0.5rem;
-  border-radius: 999px;
-  background: rgba(56, 189, 248, 0.15);
-  color: #7dd3fc;
+.status {
+  font-size: 0.8rem;
 }
 
 .topic {
-  margin: 0.5rem 0 0.25rem;
-  color: #e2e8f0;
+  margin: 0.65rem 0 0.25rem;
+  color: #ecfdf5;
+  font-weight: 500;
 }
 
 .small {
   font-size: 0.8rem;
+  margin: 0;
+}
+
+.muted {
+  color: rgba(167, 243, 208, 0.65);
 }
 </style>

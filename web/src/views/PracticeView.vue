@@ -1,5 +1,6 @@
 <script setup>
 import { ref, watch, nextTick, computed, onMounted } from 'vue'
+import { ElMessageBox } from 'element-plus'
 import { http } from '@/api/http'
 import { toastError, toastWarning } from '@/utils/toast'
 import {
@@ -164,12 +165,26 @@ function applyReplyMeta(data) {
   canAdvanceTopic.value = !!data.canAdvanceTopic
   aiExpandedQuestion.value = !!data.aiExpandedQuestion
   if (data.shouldEnd) {
-    const ok = window.confirm('模型建议可结束本轮，是否生成完整评价？')
-    if (ok) void finish()
+    ElMessageBox.confirm('模型建议可结束本轮，是否生成完整评价？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'info',
+    })
+      .then(() => {
+        void finish()
+      })
+      .catch(() => {})
   }
   if (data.strictTopicFinished) {
-    const ok = window.confirm('本题话题库题已问完，是否进入下一话题？')
-    if (ok) void nextTopic()
+    ElMessageBox.confirm('本题话题库题已问完，是否进入下一话题？', '提示', {
+      confirmButtonText: '进入',
+      cancelButtonText: '取消',
+      type: 'info',
+    })
+      .then(() => {
+        void nextTopic()
+      })
+      .catch(() => {})
   }
 }
 
@@ -365,80 +380,121 @@ function reset() {
 </script>
 
 <template>
-  <div>
-    <div v-if="!started" class="card">
-      <h2>开始模拟</h2>
-      <label>Part</label>
-      <select v-model.number="partIndex" class="input">
-        <option v-for="(label, i) in PART_LABEL" :key="PART_API[i]" :value="i">{{ label }}</option>
-      </select>
-      <label>题目来源</label>
-      <select v-model.number="sourceIndex" class="input">
-        <option v-for="(s, i) in SOURCES" :key="s" :value="i">{{ s }}</option>
-      </select>
-      <label>季节（题库模式）</label>
-      <select v-model="season" class="input" :disabled="!bankSeasons.length">
-        <option v-if="!bankSeasons.length" disabled value="">暂无季节</option>
-        <option v-for="s in bankSeasons" :key="s" :value="s">{{ s }}</option>
-      </select>
-      <p v-if="SOURCES[sourceIndex] === 'BANK' && !bankSeasons.length" class="muted small">
-        暂无季节数据，请先在管理端导入题目。
-      </p>
-      <label v-if="SOURCES[sourceIndex] === 'BANK'" class="switch-row">
-        <input v-model="allowAiExpand" type="checkbox" />
-        <span>允许 AI 扩展题库（先问完本题话题库题，再扩展提问并标注「此问题为AI扩展」）</span>
-      </label>
-      <template v-if="SOURCES[sourceIndex] === 'CUSTOM'">
-        <label>自定义话题</label>
-        <input v-model="customTopic" class="input" type="text" placeholder="例如 travel / technology" />
+  <div class="page">
+    <el-card v-if="!started" class="start-card" shadow="hover">
+      <template #header>
+        <span class="card-title">开始模拟</span>
       </template>
-      <button type="button" class="btn primary" :disabled="loading" @click="start">
-        {{ loading ? '…' : '开始模拟' }}
-      </button>
-    </div>
+      <el-form label-position="top" class="start-form">
+        <el-form-item label="Part">
+          <el-select v-model="partIndex" placeholder="选择 Part" style="width: 100%">
+            <el-option
+              v-for="(label, i) in PART_LABEL"
+              :key="PART_API[i]"
+              :label="label"
+              :value="i"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="题目来源">
+          <el-select v-model="sourceIndex" placeholder="来源" style="width: 100%">
+            <el-option v-for="(s, i) in SOURCES" :key="s" :label="s" :value="i" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="季节（题库模式）">
+          <el-select
+            v-model="season"
+            placeholder="选择季节"
+            style="width: 100%"
+            :disabled="!bankSeasons.length"
+          >
+            <el-option v-for="s in bankSeasons" :key="s" :label="s" :value="s" />
+          </el-select>
+        </el-form-item>
+        <el-alert
+          v-if="SOURCES[sourceIndex] === 'BANK' && !bankSeasons.length"
+          title="暂无季节数据，请先在管理端导入题目。"
+          type="warning"
+          show-icon
+          :closable="false"
+          class="mb-alert"
+        />
+        <el-form-item v-if="SOURCES[sourceIndex] === 'BANK'">
+          <el-checkbox v-model="allowAiExpand">
+            允许 AI 扩展题库（先问完本题话题库题，再扩展提问并标注「此问题为AI扩展」）
+          </el-checkbox>
+        </el-form-item>
+        <el-form-item v-if="SOURCES[sourceIndex] === 'CUSTOM'" label="自定义话题">
+          <el-input v-model="customTopic" placeholder="例如 travel / technology" clearable />
+        </el-form-item>
+        <el-button
+          type="primary"
+          class="start-btn"
+          :loading="loading"
+          round
+          @click="start"
+        >
+          开始模拟
+        </el-button>
+      </el-form>
+    </el-card>
 
     <template v-else>
-      <div class="card">
-        <p class="muted">Topic</p>
+      <el-card class="session-card" shadow="hover">
+        <template #header>
+          <span class="card-title">当前题目</span>
+        </template>
+        <p class="label">Topic</p>
         <p class="block">{{ topic }}</p>
-        <p v-if="aiExpandedQuestion" class="badge-ai">此问题为 AI 扩展</p>
-        <p class="muted mt">考官</p>
+        <el-tag v-if="aiExpandedQuestion" type="warning" effect="dark" class="tag-ai" round>
+          此问题为 AI 扩展
+        </el-tag>
+        <p class="label mt">考官</p>
         <p class="block">{{ examinerLine }}</p>
-        <details v-if="bankTopicFlow && (referenceAnswer || parseKeywords(keywordsJson).length)" class="ref-box">
-          <summary>参考答案与关键词</summary>
-          <p v-if="referenceAnswer" class="answer">{{ referenceAnswer }}</p>
-          <ul v-if="parseKeywords(keywordsJson).length" class="kw">
-            <li v-for="(k, i) in parseKeywords(keywordsJson)" :key="i">{{ k }}</li>
-          </ul>
-        </details>
+        <el-collapse
+          v-if="bankTopicFlow && (referenceAnswer || parseKeywords(keywordsJson).length)"
+          class="ref-collapse"
+        >
+          <el-collapse-item title="参考答案与关键词" name="ref">
+            <p v-if="referenceAnswer" class="answer">{{ referenceAnswer }}</p>
+            <ul v-if="parseKeywords(keywordsJson).length" class="kw">
+              <li v-for="(k, i) in parseKeywords(keywordsJson)" :key="i">{{ k }}</li>
+            </ul>
+          </el-collapse-item>
+        </el-collapse>
         <template v-if="lastBrief">
-          <p class="muted mt">上一答简评</p>
+          <p class="label mt">上一答简评</p>
           <p class="block">{{ lastBrief }}</p>
         </template>
-      </div>
+      </el-card>
 
-      <div class="card">
-        <p class="muted">听说练习</p>
-        <p class="hint">
-          题目更新后会自动朗读。可随时点击「再听一遍」。说完后系统会识别、显示并自动提交，无需手动提交。
-        </p>
+      <el-card class="session-card" shadow="hover">
+        <template #header>
+          <span class="card-title">听说练习</span>
+        </template>
+        <el-alert
+          title="题目更新后会自动朗读。可随时点击「再听一遍」。说完后系统会识别、显示并自动提交，无需手动提交。"
+          type="info"
+          show-icon
+          :closable="false"
+          class="mb-alert"
+        />
         <div class="row-btns">
-          <button
-            type="button"
-            class="btn outline row-btn"
+          <el-button
             :disabled="loading || !browserTtsOk"
+            round
             @click="playExaminerBrowser"
           >
             再听一遍题目
-          </button>
+          </el-button>
         </div>
         <div class="row-btns">
-          <button type="button" class="btn outline row-btn" :disabled="loading || !browserAsrOk" @click="listenBrowser">
+          <el-button :disabled="loading || !browserAsrOk" round @click="listenBrowser">
             口语识别（本机）
-          </button>
-          <button type="button" class="btn outline row-btn" :disabled="loading" @click="toggleRecordUpload">
+          </el-button>
+          <el-button :disabled="loading" round @click="toggleRecordUpload">
             {{ recording ? '停止并上传 ASR' : '录音上传 ASR' }}
-          </button>
+          </el-button>
         </div>
         <p v-if="speechHint" class="speech-hint">{{ speechHint }}</p>
 
@@ -446,157 +502,146 @@ function reset() {
           v-if="bankTopicFlow && (canAdvanceTopic || practicePhase === 'AWAIT_NEXT_TOPIC')"
           class="row-btns"
         >
-          <button type="button" class="btn outline row-btn" :disabled="loading" @click="nextTopic">
+          <el-button type="primary" plain :disabled="loading" round @click="nextTopic">
             进入下一话题
-          </button>
+          </el-button>
         </div>
 
         <template v-if="lastRecognizedText">
-          <p class="muted">识别并提交的回答</p>
+          <p class="label">识别并提交的回答</p>
           <p class="answer-readonly">{{ lastRecognizedText }}</p>
         </template>
 
-        <button type="button" class="btn outline" :disabled="loading" @click="finish">结束并生成评价</button>
-        <button type="button" class="btn outline" @click="reset">重新开始</button>
-      </div>
+        <div class="footer-btns">
+          <el-button :disabled="loading" round @click="finish">结束并生成评价</el-button>
+          <el-button round @click="reset">重新开始</el-button>
+        </div>
+      </el-card>
 
-      <div v-if="report" class="card">
-        <h3>评分与反馈</h3>
-        <p class="muted">Overall: {{ report.overallBand }}</p>
+      <el-card v-if="report" class="report-card" shadow="hover">
+        <template #header>
+          <span class="card-title">评分与反馈</span>
+        </template>
+        <el-descriptions :column="1" border size="small" class="band-desc">
+          <el-descriptions-item label="Overall">
+            {{ report.overallBand }}
+          </el-descriptions-item>
+        </el-descriptions>
         <div class="row5">
-          <span>P {{ report.pronunciationScore }}</span>
-          <span>G {{ report.grammarScore }}</span>
-          <span>C {{ report.coherenceScore }}</span>
-          <span>F {{ report.fluencyScore }}</span>
-          <span>I {{ report.ideasScore }}</span>
+          <el-tag type="success" effect="plain">P {{ report.pronunciationScore }}</el-tag>
+          <el-tag type="success" effect="plain">G {{ report.grammarScore }}</el-tag>
+          <el-tag type="success" effect="plain">C {{ report.coherenceScore }}</el-tag>
+          <el-tag type="success" effect="plain">F {{ report.fluencyScore }}</el-tag>
+          <el-tag type="success" effect="plain">I {{ report.ideasScore }}</el-tag>
         </div>
         <p class="feedback">{{ report.detailedFeedback }}</p>
-      </div>
+      </el-card>
     </template>
   </div>
 </template>
 
 <style scoped>
-h2,
-h3 {
-  margin: 0 0 1rem;
-  color: #f8fafc;
-}
-
-label {
-  display: block;
-  margin: 0.75rem 0 0.35rem;
-  color: #cbd5e1;
-  font-size: 0.9rem;
-}
-
-.input {
+.page {
   width: 100%;
-  box-sizing: border-box;
-  padding: 0.65rem 0.75rem;
-  border-radius: 8px;
-  border: 1px solid rgba(148, 163, 184, 0.3);
-  background: rgba(2, 6, 23, 0.5);
-  color: #e2e8f0;
-  margin-bottom: 0.25rem;
+}
+
+.card-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #ecfdf5;
+}
+
+.start-form {
+  max-width: 520px;
+}
+
+.start-btn {
+  width: 100%;
+  margin-top: 0.5rem;
+  background: linear-gradient(135deg, #16a34a, #059669) !important;
+  border: none !important;
+}
+
+.mb-alert {
+  margin-bottom: 0.75rem;
+}
+
+.label {
+  margin: 0.5rem 0 0.25rem;
+  font-size: 0.85rem;
+  color: rgba(167, 243, 208, 0.75);
+}
+
+.label:first-of-type {
+  margin-top: 0;
 }
 
 .block {
   margin: 0.25rem 0 0;
-  line-height: 1.6;
-  color: #e2e8f0;
+  line-height: 1.65;
+  color: #ecfdf5;
+}
+
+.tag-ai {
+  margin-top: 0.5rem;
 }
 
 .answer-readonly {
   margin: 0.35rem 0 0.75rem;
-  padding: 0.65rem 0.75rem;
-  border-radius: 8px;
-  border: 1px solid rgba(56, 189, 248, 0.25);
-  background: rgba(2, 6, 23, 0.45);
+  padding: 0.65rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid rgba(74, 222, 128, 0.35);
+  background: rgba(6, 40, 28, 0.45);
   color: #e2e8f0;
   line-height: 1.55;
   white-space: pre-wrap;
 }
 
 .mt {
-  margin-top: 0.75rem;
+  margin-top: 0.85rem;
 }
 
 .row5 {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
-  margin: 0.5rem 0;
-  color: #cbd5e1;
-  font-size: 0.85rem;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
 }
 
 .feedback {
   margin-top: 0.75rem;
   line-height: 1.65;
-  color: #e2e8f0;
+  color: #d1fae5;
   white-space: pre-wrap;
 }
 
-.switch-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.5rem;
-  margin: 0.75rem 0 0;
-  font-size: 0.88rem;
-  color: #cbd5e1;
-  line-height: 1.45;
-}
-
-.switch-row input {
-  margin-top: 0.2rem;
-}
-
-.badge-ai {
-  margin: 0.35rem 0 0;
-  font-size: 0.8rem;
-  color: #fbbf24;
-}
-
-.ref-box {
+.ref-collapse {
   margin-top: 0.75rem;
-  padding: 0.5rem 0.65rem;
-  border-radius: 8px;
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  background: rgba(2, 6, 23, 0.35);
+  border: none;
+  --el-collapse-header-bg-color: transparent;
 }
 
-.ref-box summary {
-  cursor: pointer;
-  color: #94a3b8;
-  font-size: 0.88rem;
+:deep(.ref-collapse .el-collapse-item__header) {
+  color: rgba(167, 243, 208, 0.95);
+  font-weight: 500;
 }
 
-.ref-box .answer {
+:deep(.ref-collapse .el-collapse-item__wrap) {
+  border-bottom: none;
+}
+
+.answer {
   margin: 0.5rem 0 0;
-  color: #cbd5e1;
+  color: #d1fae5;
   line-height: 1.55;
   white-space: pre-wrap;
 }
 
-.ref-box .kw {
+.kw {
   margin: 0.35rem 0 0;
   padding-left: 1.1rem;
-  color: #a5b4fc;
+  color: #86efac;
   font-size: 0.88rem;
-}
-
-.small {
-  font-size: 0.85rem;
-  margin: 0.35rem 0 0;
-  color: #94a3b8;
-}
-
-.hint {
-  font-size: 0.85rem;
-  color: #94a3b8;
-  line-height: 1.5;
-  margin: 0 0 0.75rem;
 }
 
 .row-btns {
@@ -606,43 +651,36 @@ label {
   margin-bottom: 0.5rem;
 }
 
+.row-btns .el-button {
+  flex: 1;
+  min-width: 140px;
+}
+
 .speech-hint {
   font-size: 0.85rem;
-  color: #38bdf8;
+  color: #4ade80;
   margin: 0.25rem 0 0.75rem;
 }
 
-.btn {
-  display: block;
-  width: 100%;
-  margin-top: 0.75rem;
-  padding: 0.6rem;
-  border-radius: 8px;
-  border: none;
-  cursor: pointer;
-  font-size: 0.95rem;
+.footer-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
 }
 
-.row-btns .row-btn {
-  width: auto;
-  flex: 1;
-  min-width: 140px;
-  margin-top: 0;
+.footer-btns .el-button {
+  margin: 0;
 }
 
-.btn.primary {
-  background: linear-gradient(135deg, #0ea5e9, #6366f1);
-  color: #fff;
+.band-desc {
+  margin-bottom: 0.75rem;
 }
 
-.btn.outline {
-  background: transparent;
-  color: #e2e8f0;
-  border: 1px solid rgba(148, 163, 184, 0.35);
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+.session-card,
+.start-card,
+.report-card {
+  margin-bottom: 1rem;
+  border-radius: 14px;
 }
 </style>

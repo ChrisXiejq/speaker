@@ -1,21 +1,37 @@
 <script setup>
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
+
+const router = useRouter()
 </script>
 
 <template>
   <div class="wrap">
-    <h1 class="title">管理员后台</h1>
+    <el-page-header class="page-h" @back="router.push('/')">
+      <template #content>
+        <span class="title">管理员后台</span>
+      </template>
+    </el-page-header>
     <p class="muted intro">仅通过直接访问 <code>/admin</code> 进入；首页不展示管理入口。</p>
-    <div class="grid">
-      <RouterLink to="/admin/bank" class="tile card">
-        <h2>Markdown 导入</h2>
-        <p class="muted">粘贴题目与答案入库</p>
-      </RouterLink>
-      <RouterLink to="/admin/bank/manage" class="tile card">
-        <h2>题库编辑</h2>
-        <p class="muted">按季浏览、修改与软删除</p>
-      </RouterLink>
-    </div>
+    <el-row :gutter="16" class="grid">
+      <el-col :xs="24" :sm="12">
+        <RouterLink to="/admin/bank" class="tile-link">
+          <el-card class="tile-card" shadow="hover">
+            <div class="tile-icon">📥</div>
+            <h2>Markdown 导入</h2>
+            <p class="muted">粘贴题目与答案入库</p>
+          </el-card>
+        </RouterLink>
+      </el-col>
+      <el-col :xs="24" :sm="12">
+        <RouterLink to="/admin/bank/manage" class="tile-link">
+          <el-card class="tile-card" shadow="hover">
+            <div class="tile-icon">✏️</div>
+            <h2>题库编辑</h2>
+            <p class="muted">按季浏览、修改与软删除</p>
+          </el-card>
+        </RouterLink>
+      </el-col>
+    </el-row>
     <p class="back">
       <RouterLink to="/" class="link">← 返回首页</RouterLink>
     </p>
@@ -27,10 +43,14 @@ import { RouterLink } from 'vue-router'
   max-width: 720px;
 }
 
+.page-h {
+  margin-bottom: 0.75rem;
+}
+
 .title {
-  margin: 0 0 0.5rem;
   font-size: 1.5rem;
-  color: #f8fafc;
+  font-weight: 700;
+  color: #ecfdf5;
 }
 
 .intro {
@@ -41,36 +61,50 @@ import { RouterLink } from 'vue-router'
 
 .intro code {
   font-size: 0.85em;
-  color: #7dd3fc;
+  color: #86efac;
+  padding: 0.1em 0.35em;
+  background: rgba(34, 197, 94, 0.12);
+  border-radius: 4px;
 }
 
 .grid {
-  display: grid;
-  gap: 1rem;
-  grid-template-columns: 1fr;
+  margin-top: 0;
 }
 
-@media (min-width: 560px) {
-  .grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-.tile {
+.tile-link {
+  display: block;
   text-decoration: none;
   color: inherit;
-  display: block;
-  transition: border-color 0.15s;
+  margin-bottom: 1rem;
 }
 
-.tile:hover {
-  border-color: rgba(56, 189, 248, 0.45);
+.tile-card {
+  min-height: 130px;
+  border-radius: 14px;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease;
 }
 
-.tile h2 {
+.tile-link:hover .tile-card {
+  transform: translateY(-2px);
+  border-color: rgba(74, 222, 128, 0.45) !important;
+}
+
+.tile-icon {
+  font-size: 1.75rem;
+  margin-bottom: 0.35rem;
+}
+
+.tile-card h2 {
   margin: 0 0 0.35rem;
   font-size: 1.1rem;
-  color: #f1f5f9;
+  color: #ecfdf5;
+}
+
+.tile-card .muted {
+  margin: 0;
+  line-height: 1.45;
 }
 
 .back {
@@ -78,12 +112,16 @@ import { RouterLink } from 'vue-router'
 }
 
 .link {
-  color: #7dd3fc;
+  color: #86efac;
   text-decoration: none;
   font-size: 0.9rem;
 }
 
 .link:hover {
   text-decoration: underline;
+}
+
+.muted {
+  color: rgba(167, 243, 208, 0.72);
 }
 </style>

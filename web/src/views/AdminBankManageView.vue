@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
+import { ElMessageBox } from 'element-plus'
 import { http } from '@/api/http'
 import { toastSuccess } from '@/utils/toast'
 
@@ -14,9 +15,6 @@ const loading = ref(false)
 const error = ref('')
 const saving = ref(false)
 
-/** 展开显示答案与关键词的题目 id */
-const expandedIds = ref({})
-
 function parseKeywords(json) {
   if (!json) return []
   try {
@@ -25,14 +23,6 @@ function parseKeywords(json) {
   } catch {
     return []
   }
-}
-
-function isExpanded(id) {
-  return !!expandedIds.value[id]
-}
-
-function toggleExpand(id) {
-  expandedIds.value = { ...expandedIds.value, [id]: !expandedIds.value[id] }
 }
 
 const editOpen = ref(false)
@@ -75,11 +65,9 @@ async function loadItems() {
       headers: adminHeaders(),
     })
     items.value = data || []
-    expandedIds.value = {}
   } catch (e) {
     error.value = e.message || String(e)
     items.value = []
-    expandedIds.value = {}
   } finally {
     loading.value = false
   }
@@ -132,7 +120,15 @@ async function saveEdit() {
 }
 
 async function removeItem(row) {
-  if (!window.confirm(`确定软删除题目 #${row.id}？（用户侧将不再显示）`)) return
+  try {
+    await ElMessageBox.confirm(`确定软删除题目 #${row.id}？（用户侧将不再显示）`, '确认', {
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+  } catch {
+    return
+  }
   error.value = ''
   try {
     await http.delete(`/api/admin/bank/items/${row.id}`, { headers: adminHeaders() })
@@ -145,11 +141,17 @@ async function removeItem(row) {
 async function softDeleteEntireSeason() {
   const season = seasons.value[seasonIndex.value]
   if (!season) return
-  if (
-    !window.confirm(
-      `确定软删除整个季节「${season}」下的全部题目？\n此操作不可恢复为可见（仅数据库 is_deleted=1）。`,
+  try {
+    await ElMessageBox.confirm(
+      `确定软删除整个季节「${season}」下的全部题目？此操作不可恢复为可见（仅数据库 is_deleted=1）。`,
+      '危险操作',
+      {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+      },
     )
-  ) {
+  } catch {
     return
   }
   error.value = ''
@@ -192,118 +194,101 @@ onMounted(async () => {
       <code>app.admin.api-key</code>，并填写与导入页相同的管理员密钥。
     </p>
 
-    <div class="card form">
-      <label>管理员密钥</label>
-      <input v-model="adminKey" type="password" class="input" autocomplete="off" placeholder="X-Admin-Key" />
-
-      <label>季节</label>
-      <select v-model.number="seasonIndex" class="input">
-        <option v-for="(s, i) in seasons" :key="s" :value="i">{{ s }}</option>
-      </select>
-
-      <label>范围</label>
-      <div class="seg">
-        <label class="inline"
-          ><input v-model="segment" type="radio" value="part1" /> Part 1</label
-        >
-        <label class="inline"
-          ><input v-model="segment" type="radio" value="part23" /> Part 2 &amp; 3</label
-        >
-      </div>
-
-      <div class="row-actions">
-        <button type="button" class="btn secondary" :disabled="loading" @click="loadItems">刷新</button>
-        <button
-          type="button"
-          class="btn danger"
-          :disabled="loading || !seasons.length"
-          @click="softDeleteEntireSeason"
-        >
-          软删除本季全部
-        </button>
-      </div>
-    </div>
-
-    <p v-if="loading" class="muted">加载中…</p>
-    <p v-if="error" class="err">{{ error }}</p>
-
-    <div v-if="!loading && items.length" class="table-wrap card">
-      <table class="tbl">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Part</th>
-            <th>话题</th>
-            <th>题目</th>
-            <th>排序</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          <template v-for="row in items" :key="row.id">
-            <tr>
-              <td>{{ row.id }}</td>
-              <td>{{ row.part }}</td>
-              <td class="topic">{{ row.topic }}</td>
-              <td class="q">
-                <div class="q-cell">
-                  <span class="q-text">{{ row.questionText }}</span>
-                  <button
-                    type="button"
-                    class="expand-btn"
-                    :aria-expanded="isExpanded(row.id)"
-                    :title="isExpanded(row.id) ? '收起答案与关键词' : '展开答案与关键词'"
-                    @click="toggleExpand(row.id)"
-                  >
-                    <span class="caret" :class="{ open: isExpanded(row.id) }">▼</span>
-                  </button>
-                </div>
-              </td>
-              <td>{{ row.sortOrder }}</td>
-              <td class="actions">
-                <button type="button" class="link" @click="openEdit(row)">编辑</button>
-                <button type="button" class="link danger" @click="removeItem(row)">删除</button>
-              </td>
-            </tr>
-            <tr v-if="isExpanded(row.id)" class="detail-row">
-              <td colspan="6" class="detail-cell">
-                <div class="detail-inner">
-                  <p class="detail-label">参考答案</p>
-                  <p class="detail-answer">{{ row.answerText?.trim() || '（无）' }}</p>
-                  <p class="detail-label">关键词</p>
-                  <ul v-if="parseKeywords(row.keywordsJson).length" class="detail-kw">
-                    <li v-for="(k, i) in parseKeywords(row.keywordsJson)" :key="i">{{ k }}</li>
-                  </ul>
-                  <p v-else class="detail-empty">（无）</p>
-                </div>
-              </td>
-            </tr>
-          </template>
-        </tbody>
-      </table>
-    </div>
-    <p v-else-if="!loading && !items.length" class="muted empty">该条件下暂无题目</p>
-
-    <div v-if="editOpen" class="modal-mask" @click.self="closeEdit">
-      <div class="modal card">
-        <h3>编辑题目 #{{ editForm.id }}</h3>
-        <p class="muted small">Part {{ editForm.part }}（不可在此修改）</p>
-        <label>话题 topic</label>
-        <input v-model="editForm.topic" class="input" />
-        <label>题目 questionText</label>
-        <textarea v-model="editForm.questionText" class="textarea" rows="4" />
-        <label>参考答案 answerText</label>
-        <textarea v-model="editForm.answerText" class="textarea" rows="4" />
-        <label>关键词 JSON keywordsJson</label>
-        <textarea v-model="editForm.keywordsJson" class="textarea mono" rows="3" placeholder='["a","b"]' />
-        <label>排序 sortOrder</label>
-        <input v-model.number="editForm.sortOrder" type="number" class="input" />
-        <div class="modal-actions">
-          <button type="button" class="btn secondary" @click="closeEdit">取消</button>
-          <button type="button" class="btn" :disabled="saving" @click="saveEdit">保存</button>
+    <el-card class="form-card" shadow="hover">
+      <el-form label-position="top">
+        <el-form-item label="管理员密钥">
+          <el-input
+            v-model="adminKey"
+            type="password"
+            autocomplete="off"
+            placeholder="X-Admin-Key"
+            show-password
+          />
+        </el-form-item>
+        <el-form-item label="季节">
+          <el-select v-model="seasonIndex" placeholder="选择季节" style="width: 100%; max-width: 400px">
+            <el-option v-for="(s, i) in seasons" :key="s" :label="s" :value="i" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="范围">
+          <el-radio-group v-model="segment">
+            <el-radio-button value="part1">Part 1</el-radio-button>
+            <el-radio-button value="part23">Part 2 &amp; 3</el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+        <div class="row-actions">
+          <el-button round :disabled="loading" @click="loadItems">刷新</el-button>
+          <el-button type="danger" plain round :disabled="loading || !seasons.length" @click="softDeleteEntireSeason">
+            软删除本季全部
+          </el-button>
         </div>
-      </div>
-    </div>
+      </el-form>
+    </el-card>
+
+    <el-alert v-if="error" :title="error" type="error" show-icon :closable="false" class="err-alert" />
+
+    <el-skeleton v-if="loading" animated :rows="6" />
+    <el-empty v-else-if="!items.length" description="该条件下暂无题目" />
+
+    <el-card v-else class="table-card" shadow="hover">
+      <el-table :data="items" stripe row-key="id" class="tbl">
+        <el-table-column type="expand">
+          <template #default="{ row }">
+            <div class="detail-inner">
+              <p class="detail-label">参考答案</p>
+              <p class="detail-answer">{{ row.answerText?.trim() || '（无）' }}</p>
+              <p class="detail-label">关键词</p>
+              <ul v-if="parseKeywords(row.keywordsJson).length" class="detail-kw">
+                <li v-for="(k, i) in parseKeywords(row.keywordsJson)" :key="i">{{ k }}</li>
+              </ul>
+              <p v-else class="detail-empty">（无）</p>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="id" label="ID" width="72" />
+        <el-table-column prop="part" label="Part" width="88" />
+        <el-table-column prop="topic" label="话题" min-width="120" show-overflow-tooltip />
+        <el-table-column prop="questionText" label="题目" min-width="220" show-overflow-tooltip />
+        <el-table-column prop="sortOrder" label="排序" width="72" />
+        <el-table-column label="操作" width="140" fixed="right">
+          <template #default="{ row }">
+            <el-button type="primary" link @click="openEdit(row)">编辑</el-button>
+            <el-button type="danger" link @click="removeItem(row)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-card>
+
+    <el-dialog
+      v-model="editOpen"
+      :title="`编辑题目 #${editForm.id}`"
+      width="560px"
+      destroy-on-close
+      class="edit-dialog"
+    >
+      <p class="muted small">Part {{ editForm.part }}（不可在此修改）</p>
+      <el-form label-position="top">
+        <el-form-item label="话题 topic">
+          <el-input v-model="editForm.topic" />
+        </el-form-item>
+        <el-form-item label="题目 questionText">
+          <el-input v-model="editForm.questionText" type="textarea" :rows="4" />
+        </el-form-item>
+        <el-form-item label="参考答案 answerText">
+          <el-input v-model="editForm.answerText" type="textarea" :rows="4" />
+        </el-form-item>
+        <el-form-item label="关键词 JSON keywordsJson">
+          <el-input v-model="editForm.keywordsJson" type="textarea" :rows="3" placeholder='["a","b"]' class="mono" />
+        </el-form-item>
+        <el-form-item label="排序 sortOrder">
+          <el-input v-model.number="editForm.sortOrder" type="number" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button round @click="closeEdit">取消</el-button>
+        <el-button type="primary" round :loading="saving" @click="saveEdit">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -318,7 +303,7 @@ onMounted(async () => {
 
 .nav-link {
   font-size: 0.88rem;
-  color: #7dd3fc;
+  color: #86efac;
   text-decoration: none;
 }
 
@@ -328,7 +313,8 @@ onMounted(async () => {
 
 .title {
   margin: 0 0 0.5rem;
-  color: #f8fafc;
+  color: #ecfdf5;
+  font-size: 1.35rem;
 }
 
 .intro {
@@ -339,193 +325,46 @@ onMounted(async () => {
 
 .intro code {
   font-size: 0.85em;
-  color: #7dd3fc;
+  color: #86efac;
+  padding: 0.1em 0.35em;
+  background: rgba(34, 197, 94, 0.12);
+  border-radius: 4px;
 }
 
-.form label {
-  display: block;
-  margin: 0.75rem 0 0.35rem;
-  color: #cbd5e1;
-  font-size: 0.9rem;
-}
-
-.seg {
-  display: flex;
-  gap: 1.25rem;
-  margin: 0.5rem 0 1rem;
-}
-
-.inline {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  color: #e2e8f0;
-  cursor: pointer;
-}
-
-.input {
-  width: 100%;
-  max-width: 400px;
-  box-sizing: border-box;
-  padding: 0.5rem 0.65rem;
-  border-radius: 8px;
-  border: 1px solid rgba(148, 163, 184, 0.3);
-  background: rgba(2, 6, 23, 0.5);
-  color: #e2e8f0;
-}
-
-.textarea {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 0.5rem 0.65rem;
-  border-radius: 8px;
-  border: 1px solid rgba(148, 163, 184, 0.3);
-  background: rgba(2, 6, 23, 0.5);
-  color: #e2e8f0;
-  font-size: 0.9rem;
-}
-
-.textarea.mono {
-  font-family: ui-monospace, monospace;
-  font-size: 0.85rem;
-}
-
-.btn {
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  border: 1px solid rgba(56, 189, 248, 0.5);
-  background: rgba(14, 165, 233, 0.25);
-  color: #e0f2fe;
-  cursor: pointer;
-}
-
-.btn.secondary {
-  border-color: rgba(148, 163, 184, 0.4);
-  background: rgba(30, 41, 59, 0.6);
+.form-card,
+.table-card {
+  margin-bottom: 1rem;
+  border-radius: 14px;
 }
 
 .row-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
-  margin-top: 0.5rem;
+  margin-top: 0.25rem;
 }
 
-.btn.danger {
-  border-color: rgba(248, 113, 113, 0.55);
-  background: rgba(127, 29, 29, 0.35);
-  color: #fecaca;
-}
-
-.err {
-  color: #fca5a5;
-}
-
-.empty {
-  text-align: center;
-  padding: 2rem;
-}
-
-.table-wrap {
-  overflow-x: auto;
-}
-
-.tbl {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.88rem;
-}
-
-.tbl th,
-.tbl td {
-  padding: 0.5rem 0.65rem;
-  text-align: left;
-  vertical-align: top;
-  border-bottom: 1px solid rgba(51, 65, 85, 0.6);
-}
-
-.tbl th {
-  color: #94a3b8;
-  font-weight: 600;
-}
-
-.topic {
-  max-width: 140px;
-  color: #f1f5f9;
-}
-
-.q {
-  max-width: 420px;
-  color: #cbd5e1;
-  line-height: 1.45;
-}
-
-.q-cell {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.35rem;
-}
-
-.q-text {
-  flex: 1;
-  min-width: 0;
-}
-
-.expand-btn {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.5rem;
-  height: 1.5rem;
-  padding: 0;
-  border: none;
-  border-radius: 4px;
-  background: rgba(30, 41, 59, 0.8);
-  color: #94a3b8;
-  cursor: pointer;
-  line-height: 1;
-}
-
-.expand-btn:hover {
-  color: #e2e8f0;
-  background: rgba(51, 65, 85, 0.9);
-}
-
-.caret {
-  display: inline-block;
-  font-size: 0.65rem;
-  transition: transform 0.15s ease;
-}
-
-.caret.open {
-  transform: rotate(-180deg);
-}
-
-.detail-row .detail-cell {
-  padding: 0 0.65rem 0.75rem 0.65rem;
-  border-bottom: 1px solid rgba(51, 65, 85, 0.6);
-  background: rgba(15, 23, 42, 0.45);
+.err-alert {
+  margin-bottom: 0.75rem;
 }
 
 .detail-inner {
-  padding: 0.5rem 0.65rem 0.65rem;
-  border-radius: 8px;
-  border: 1px solid rgba(71, 85, 105, 0.5);
+  padding: 0.5rem 0.75rem 0.75rem;
+  max-width: 880px;
 }
 
 .detail-label {
   margin: 0 0 0.25rem;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #94a3b8;
+  color: rgba(167, 243, 208, 0.75);
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
 
 .detail-answer {
   margin: 0 0 0.65rem;
-  color: #cbd5e1;
+  color: #d1fae5;
   line-height: 1.5;
   white-space: pre-wrap;
   font-size: 0.86rem;
@@ -534,56 +373,15 @@ onMounted(async () => {
 .detail-kw {
   margin: 0;
   padding-left: 1.1rem;
-  color: #a5b4fc;
+  color: #86efac;
   font-size: 0.86rem;
   line-height: 1.45;
 }
 
 .detail-empty {
   margin: 0;
-  color: #64748b;
+  color: rgba(167, 243, 208, 0.45);
   font-size: 0.86rem;
-}
-
-.actions {
-  white-space: nowrap;
-}
-
-.link {
-  background: none;
-  border: none;
-  color: #7dd3fc;
-  cursor: pointer;
-  margin-right: 0.75rem;
-  padding: 0;
-  font-size: inherit;
-}
-
-.link.danger {
-  color: #f87171;
-}
-
-.modal-mask {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 50;
-  padding: 1rem;
-}
-
-.modal {
-  width: 100%;
-  max-width: 560px;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-.modal h3 {
-  margin: 0 0 0.25rem;
-  color: #f8fafc;
 }
 
 .small {
@@ -591,16 +389,16 @@ onMounted(async () => {
   margin: 0 0 1rem;
 }
 
-.modal label {
-  display: block;
-  margin: 0.65rem 0 0.35rem;
-  color: #cbd5e1;
-  font-size: 0.88rem;
+:deep(.mono textarea) {
+  font-family: ui-monospace, monospace;
+  font-size: 0.85rem;
 }
 
-.modal-actions {
-  display: flex;
-  gap: 0.75rem;
-  margin-top: 1rem;
+.tbl {
+  width: 100%;
+}
+
+.muted {
+  color: rgba(167, 243, 208, 0.72);
 }
 </style>

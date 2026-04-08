@@ -91,24 +91,30 @@ async function runImport() {
       <code>application-local.yml</code> 中配置 <code>app.admin.api-key</code>，并在此填写相同密钥。
     </p>
 
-    <div class="card form">
-      <label>管理员密钥（请求头 X-Admin-Key）</label>
-      <input v-model="adminKey" type="password" class="input" autocomplete="off" placeholder="与后端 app.admin.api-key 一致" />
-
-      <label>季节标签 seasonLabel</label>
-      <input v-model="seasonLabel" class="input" placeholder="如 2025-9-12" />
-
-      <label class="row">
-        <input v-model="replaceExisting" type="checkbox" />
-        导入前删除该季节已有题目（同一 seasonLabel）
-      </label>
-
-      <label>Part 1 · Markdown</label>
-      <textarea
-        v-model="part1Markdown"
-        class="textarea"
-        rows="12"
-        placeholder="## Topic: 话题名
+    <el-card class="form-card" shadow="hover">
+      <el-form label-position="top">
+        <el-form-item label="管理员密钥（请求头 X-Admin-Key）">
+          <el-input
+            v-model="adminKey"
+            type="password"
+            autocomplete="off"
+            placeholder="与后端 app.admin.api-key 一致"
+            show-password
+          />
+        </el-form-item>
+        <el-form-item label="季节标签 seasonLabel">
+          <el-input v-model="seasonLabel" placeholder="如 2025-9-12" />
+        </el-form-item>
+        <el-form-item>
+          <el-checkbox v-model="replaceExisting">导入前删除该季节已有题目（同一 seasonLabel）</el-checkbox>
+        </el-form-item>
+        <el-form-item label="Part 1 · Markdown">
+          <el-input
+            v-model="part1Markdown"
+            type="textarea"
+            :rows="12"
+            class="mono"
+            placeholder="## Topic: 话题名
 
 ### Question
 题目英文？
@@ -119,14 +125,15 @@ async function runImport() {
 ### Keywords
 - 关键词1
 - 关键词2"
-      />
-
-      <label>Part 2 &amp; 3 · Markdown</label>
-      <textarea
-        v-model="part23Markdown"
-        class="textarea"
-        rows="16"
-        placeholder="## Topic: 话题名
+          />
+        </el-form-item>
+        <el-form-item label="Part 2 & 3 · Markdown">
+          <el-input
+            v-model="part23Markdown"
+            type="textarea"
+            :rows="16"
+            class="mono"
+            placeholder="## Topic: 话题名
 
 ### Part 2
 
@@ -149,43 +156,64 @@ Describe ...（含 You should say 要点）
 
 #### Keywords
 - x"
-      />
+          />
+        </el-form-item>
+        <div class="actions">
+          <el-button :disabled="loading" round @click="runPreview">仅预览解析</el-button>
+          <el-button type="primary" :loading="loading" round @click="runImport">解析并写入数据库</el-button>
+        </div>
+      </el-form>
+    </el-card>
 
-      <div class="actions">
-        <button type="button" class="btn secondary" :disabled="loading" @click="runPreview">仅预览解析</button>
-        <button type="button" class="btn" :disabled="loading" @click="runImport">解析并写入数据库</button>
-      </div>
-    </div>
+    <el-alert v-if="loading" title="处理中…" type="info" show-icon :closable="false" class="alert-block" />
+    <el-alert v-if="error" :title="error" type="error" show-icon :closable="false" class="alert-block" />
 
-    <p v-if="loading" class="muted">处理中…</p>
-    <p v-if="error" class="err">{{ error }}</p>
-
-    <div v-if="preview" class="card result">
-      <h3>预览</h3>
+    <el-card v-if="preview" class="result-card" shadow="hover">
+      <template #header>
+        <span class="card-h">预览</span>
+      </template>
       <p>
         Part1: {{ preview.part1Count }} 条 · Part2: {{ preview.part2Count }} 条 · Part3:
         {{ preview.part3Count }} 条
       </p>
-      <ul v-if="preview.warnings?.length" class="warn-list">
-        <li v-for="(w, i) in preview.warnings" :key="i">{{ w }}</li>
-      </ul>
+      <template v-if="preview.warnings?.length">
+        <el-alert
+          v-for="(w, i) in preview.warnings"
+          :key="i"
+          :title="w"
+          type="warning"
+          show-icon
+          :closable="false"
+          class="warn-item"
+        />
+      </template>
       <div v-for="(q, i) in preview.sampleItems" :key="i" class="sample">
-        <span class="badge">{{ q.part }}</span>
+        <el-tag size="small" effect="plain">{{ q.part }}</el-tag>
         <p class="topic">{{ q.topic }}</p>
         <p class="qtext">{{ q.questionText?.slice(0, 280) }}{{ (q.questionText?.length || 0) > 280 ? '…' : '' }}</p>
       </div>
-    </div>
+    </el-card>
 
-    <div v-if="importResult" class="card result ok">
-      <h3>导入完成</h3>
+    <el-card v-if="importResult" class="result-card ok" shadow="hover">
+      <template #header>
+        <span class="card-h">导入完成</span>
+      </template>
       <p>
         已写入 {{ importResult.inserted }} 条（Part1: {{ importResult.part1Count }} · Part2:
         {{ importResult.part2Count }} · Part3: {{ importResult.part3Count }}）
       </p>
-      <ul v-if="importResult.warnings?.length" class="warn-list">
-        <li v-for="(w, i) in importResult.warnings" :key="i">{{ w }}</li>
-      </ul>
-    </div>
+      <template v-if="importResult.warnings?.length">
+        <el-alert
+          v-for="(w, i) in importResult.warnings"
+          :key="i"
+          :title="w"
+          type="warning"
+          show-icon
+          :closable="false"
+          class="warn-item"
+        />
+      </template>
+    </el-card>
   </div>
 </template>
 
@@ -200,7 +228,7 @@ Describe ...（含 You should say 要点）
 
 .nav-link {
   font-size: 0.88rem;
-  color: #7dd3fc;
+  color: #86efac;
   text-decoration: none;
 }
 
@@ -210,7 +238,8 @@ Describe ...（含 You should say 要点）
 
 .title {
   margin: 0 0 0.5rem;
-  color: #f8fafc;
+  color: #ecfdf5;
+  font-size: 1.35rem;
 }
 
 .intro {
@@ -221,123 +250,72 @@ Describe ...（含 You should say 要点）
 
 .intro code {
   font-size: 0.85em;
-  color: #7dd3fc;
+  color: #86efac;
+  padding: 0.1em 0.35em;
+  background: rgba(34, 197, 94, 0.12);
+  border-radius: 4px;
 }
 
-.form label {
-  display: block;
-  margin: 0.75rem 0 0.35rem;
-  color: #cbd5e1;
-  font-size: 0.9rem;
+.form-card {
+  margin-bottom: 1rem;
+  border-radius: 14px;
 }
 
-.row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.input {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 0.5rem 0.65rem;
-  border-radius: 8px;
-  border: 1px solid rgba(148, 163, 184, 0.3);
-  background: rgba(2, 6, 23, 0.5);
-  color: #e2e8f0;
-}
-
-.textarea {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 0.5rem 0.65rem;
-  border-radius: 8px;
-  border: 1px solid rgba(148, 163, 184, 0.3);
-  background: rgba(2, 6, 23, 0.5);
-  color: #e2e8f0;
+:deep(.mono textarea) {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.85rem;
   line-height: 1.45;
-  resize: vertical;
 }
 
 .actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
-  margin-top: 1rem;
+  margin-top: 0.5rem;
 }
 
-.btn {
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  border: 1px solid rgba(56, 189, 248, 0.5);
-  background: rgba(14, 165, 233, 0.25);
-  color: #e0f2fe;
-  cursor: pointer;
-  font-size: 0.95rem;
+.alert-block {
+  margin-bottom: 0.75rem;
 }
 
-.btn:hover:not(:disabled) {
-  background: rgba(14, 165, 233, 0.4);
+.result-card {
+  margin-bottom: 1rem;
+  border-radius: 14px;
 }
 
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.result-card.ok {
+  border-color: rgba(74, 222, 128, 0.35) !important;
 }
 
-.btn.secondary {
-  border-color: rgba(148, 163, 184, 0.4);
-  background: rgba(30, 41, 59, 0.6);
+.card-h {
+  font-weight: 600;
+  color: #ecfdf5;
 }
 
-.err {
-  color: #fca5a5;
-  margin: 0.75rem 0 0;
-}
-
-.result h3 {
-  margin: 0 0 0.5rem;
-  color: #f1f5f9;
-}
-
-.result.ok {
-  border-color: rgba(34, 197, 94, 0.35);
-}
-
-.warn-list {
-  margin: 0.5rem 0 0;
-  padding-left: 1.25rem;
-  color: #fcd34d;
-  font-size: 0.9rem;
+.warn-item {
+  margin-top: 0.5rem;
 }
 
 .sample {
   margin-top: 0.75rem;
   padding-top: 0.75rem;
-  border-top: 1px solid rgba(51, 65, 85, 0.6);
-}
-
-.badge {
-  display: inline-block;
-  font-size: 0.75rem;
-  padding: 0.15rem 0.45rem;
-  border-radius: 4px;
-  background: rgba(51, 65, 85, 0.9);
-  color: #94a3b8;
+  border-top: 1px solid rgba(74, 222, 128, 0.12);
 }
 
 .topic {
   font-weight: 600;
   margin: 0.35rem 0 0.25rem;
-  color: #f8fafc;
+  color: #ecfdf5;
 }
 
 .qtext {
   margin: 0;
   font-size: 0.88rem;
-  color: #94a3b8;
+  color: rgba(209, 250, 229, 0.82);
   line-height: 1.45;
+}
+
+.muted {
+  color: rgba(167, 243, 208, 0.72);
 }
 </style>

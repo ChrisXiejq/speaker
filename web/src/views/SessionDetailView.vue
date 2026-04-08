@@ -42,47 +42,69 @@ function formatEpochMs(v) {
 </script>
 
 <template>
-  <div>
-    <p v-if="loading" class="muted">加载中…</p>
+  <div class="page">
+    <el-skeleton v-if="loading" animated :rows="8" />
     <template v-else-if="detail">
-      <div class="card">
+      <el-card class="block-card" shadow="hover">
         <div class="row">
-          <span class="tag">{{ formatPartLabel(detail.session.part) }}</span>
+          <el-tag type="success" effect="plain" round>{{ formatPartLabel(detail.session.part) }}</el-tag>
           <span class="muted small">{{ detail.session.status }}</span>
         </div>
         <p class="topic">{{ detail.session.topic || '（无主题）' }}</p>
         <p class="muted small">{{ formatEpochMs(detail.session.startedAt) }}</p>
-      </div>
+      </el-card>
 
-      <div v-if="detail.report" class="card">
-        <h3>评价</h3>
-        <p class="muted">Overall: {{ detail.report.overallBand }}</p>
+      <el-card v-if="detail.report" class="block-card" shadow="hover">
+        <template #header>
+          <span class="head-title">评价</span>
+        </template>
+        <el-descriptions :column="1" border size="small" class="mb-desc">
+          <el-descriptions-item label="Overall">{{ detail.report.overallBand }}</el-descriptions-item>
+        </el-descriptions>
         <div class="row5">
-          <span>P {{ detail.report.pronunciationScore }}</span>
-          <span>G {{ detail.report.grammarScore }}</span>
-          <span>C {{ detail.report.coherenceScore }}</span>
-          <span>F {{ detail.report.fluencyScore }}</span>
-          <span>I {{ detail.report.ideasScore }}</span>
+          <el-tag type="success" effect="plain">P {{ detail.report.pronunciationScore }}</el-tag>
+          <el-tag type="success" effect="plain">G {{ detail.report.grammarScore }}</el-tag>
+          <el-tag type="success" effect="plain">C {{ detail.report.coherenceScore }}</el-tag>
+          <el-tag type="success" effect="plain">F {{ detail.report.fluencyScore }}</el-tag>
+          <el-tag type="success" effect="plain">I {{ detail.report.ideasScore }}</el-tag>
         </div>
         <p class="feedback">{{ detail.report.detailedFeedback }}</p>
-      </div>
+      </el-card>
 
-      <div class="card">
-        <h3>对话</h3>
-        <div v-for="t in detail.turns" :key="t.id" class="turn">
-          <p class="role">{{ t.role === 'EXAMINER' ? '考官' : '你' }}</p>
-          <p class="content">{{ t.content }}</p>
-          <p v-if="t.briefEval" class="muted small">简评：{{ t.briefEval }}</p>
-        </div>
-      </div>
+      <el-card class="block-card" shadow="hover">
+        <template #header>
+          <span class="head-title">对话</span>
+        </template>
+        <el-timeline>
+          <el-timeline-item
+            v-for="t in detail.turns"
+            :key="t.id"
+            :type="t.role === 'EXAMINER' ? 'success' : 'primary'"
+            placement="top"
+          >
+            <p class="role">{{ t.role === 'EXAMINER' ? '考官' : '你' }}</p>
+            <p class="content">{{ t.content }}</p>
+            <p v-if="t.briefEval" class="muted small">简评：{{ t.briefEval }}</p>
+          </el-timeline-item>
+        </el-timeline>
+      </el-card>
     </template>
   </div>
 </template>
 
 <style scoped>
-h3 {
-  margin: 0 0 0.75rem;
-  color: #f8fafc;
+.page {
+  width: 100%;
+}
+
+.block-card {
+  margin-bottom: 1rem;
+  border-radius: 14px;
+}
+
+.head-title {
+  font-weight: 600;
+  color: #ecfdf5;
 }
 
 .row {
@@ -91,59 +113,54 @@ h3 {
   align-items: center;
 }
 
-.tag {
-  font-size: 0.75rem;
-  padding: 0.2rem 0.5rem;
-  border-radius: 999px;
-  background: rgba(56, 189, 248, 0.15);
-  color: #7dd3fc;
-}
-
 .topic {
-  margin: 0.5rem 0 0.25rem;
+  margin: 0.65rem 0 0.25rem;
   font-size: 1.1rem;
   font-weight: 600;
+  color: #ecfdf5;
 }
 
 .row5 {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
+  gap: 0.5rem;
   margin: 0.5rem 0;
-  color: #cbd5e1;
-  font-size: 0.85rem;
 }
 
 .feedback {
   margin-top: 0.75rem;
   line-height: 1.65;
   white-space: pre-wrap;
-  color: #e2e8f0;
+  color: #d1fae5;
 }
 
-.turn {
-  padding: 0.75rem 0;
-  border-top: 1px solid rgba(148, 163, 184, 0.15);
-}
-
-.turn:first-of-type {
-  border-top: none;
-  padding-top: 0;
+.mb-desc {
+  margin-bottom: 0.75rem;
 }
 
 .role {
   margin: 0 0 0.25rem;
-  color: #94a3b8;
+  color: rgba(167, 243, 208, 0.85);
   font-size: 0.8rem;
+  font-weight: 600;
 }
 
 .content {
   margin: 0;
   line-height: 1.6;
-  color: #e2e8f0;
+  color: #ecfdf5;
 }
 
 .small {
   font-size: 0.8rem;
+  margin: 0.35rem 0 0;
+}
+
+.muted {
+  color: rgba(167, 243, 208, 0.65);
+}
+
+:deep(.el-timeline-item__timestamp) {
+  display: none;
 }
 </style>
