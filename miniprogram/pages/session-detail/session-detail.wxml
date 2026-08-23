@@ -5,7 +5,7 @@
       <text class="muted small">{{ detail.session.status }}</text>
     </view>
     <view class="topic">{{ detail.session.topic || '（无主题）' }}</view>
-    <view class="muted small">{{ detail.session.startedAt }}</view>
+    <view class="muted small">{{ detail.session.startedAtText }}</view>
   </view>
 
   <view class="card" wx:if="{{ detail.report }}">

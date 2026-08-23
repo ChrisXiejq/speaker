@@ -9,6 +9,8 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.lang.NonNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -19,14 +21,15 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
 /**
- * 简单按 IP 滑动窗口限流，降低撞库、刷接口与滥用 AI 的风险。
+ * 简单按 IP 滑动窗口限流，降低刷接口与滥用 AI 的风险。
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class RateLimitFilter extends OncePerRequestFilter {
 
+    private static final Logger log = LoggerFactory.getLogger(RateLimitFilter.class);
+
     private final AppProperties appProperties;
-    private final Map<String, Deque<Long>> authBuckets = new ConcurrentHashMap<>();
     private final Map<String, Deque<Long>> apiBuckets = new ConcurrentHashMap<>();
     private final Map<String, Deque<Long>> aiBuckets = new ConcurrentHashMap<>();
 
@@ -45,25 +48,20 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
         String path = request.getRequestURI();
         String ip = clientIp(request);
-        int authLimit = appProperties.getSecurity().getRateLimit().getAuthPerMinute();
         int apiLimit = appProperties.getSecurity().getRateLimit().getApiPerMinute();
         int aiLimit = appProperties.getSecurity().getRateLimit().getAiPerMinute();
 
-        if (path.startsWith("/api/auth")) {
-            if (!allow(authBuckets, "auth:" + ip, authLimit)) {
-                response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
-                response.getWriter().write("{\"error\":\"rate_limited\"}");
-                return;
-            }
-        } else if (path.startsWith("/api/")) {
+        if (path.startsWith("/api/")) {
             boolean aiHeavy = "POST".equalsIgnoreCase(request.getMethod())
                     && path.startsWith("/api/practice");
             if (aiHeavy && !allow(aiBuckets, "ai:" + ip, aiLimit)) {
+                log.warn("[filter:ratelimit] 429 ai ip={} path={}", ip, path);
                 response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
                 response.getWriter().write("{\"error\":\"rate_limited\"}");
                 return;
             }
             if (!allow(apiBuckets, "api:" + ip, apiLimit)) {
+                log.warn("[filter:ratelimit] 429 api ip={} path={}", ip, path);
                 response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
                 response.getWriter().write("{\"error\":\"rate_limited\"}");
                 return;

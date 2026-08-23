@@ -1,5 +1,8 @@
 package com.speaker.app.model.entity;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -7,13 +10,12 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.Instant;
-
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder
+@TableName("practice_sessions")
 public class PracticeSession {
 
     /** PART2_AND_3：同一话题下先 Part 2 后 Part 3；历史会话可能仍为 PART2 / PART3 */
@@ -21,6 +23,7 @@ public class PracticeSession {
 
     public enum Status { IN_PROGRESS, COMPLETED, ABORTED }
 
+    @TableId(type = IdType.AUTO)
     private Long id;
     private Long userId;
     private Part part;
@@ -34,8 +37,9 @@ public class PracticeSession {
     /** JSON：BankTopicPracticeState */
     private String sessionStateJson;
     private Status status;
-    private Instant startedAt;
-    private Instant endedAt;
+    /** epoch 毫秒，与库表 BIGINT 一致 */
+    private Long startedAt;
+    private Long endedAt;
     /** 软删除：仅列表/详情不展示，数据保留 */
     @Builder.Default
     private Boolean isDeleted = false;

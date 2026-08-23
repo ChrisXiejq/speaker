@@ -9,6 +9,6 @@
       </view>
     </view>
     <view class="topic">{{ item.topic || '（无主题）' }}</view>
-    <view class="muted small">{{ item.startedAt }}</view>
+    <view class="muted small">{{ item.startedAtText }}</view>
   </view>
 </view>

@@ -5,7 +5,9 @@ type Session = {
   part: string;
   topic: string;
   status: string;
-  startedAt: string;
+  /** epoch 毫秒 */
+  startedAt: number;
+  startedAtText?: string;
 };
 
 type PageResp = {
@@ -25,7 +27,12 @@ Page({
     this.setData({ loading: true });
     try {
       const res = await request<PageResp>("/api/practice/sessions?page=0&size=50", "GET");
-      this.setData({ list: res.content || [] });
+      const list = (res.content || []).map((x) => ({
+        ...x,
+        startedAtText:
+          x.startedAt != null ? new Date(x.startedAt).toLocaleString() : "",
+      }));
+      this.setData({ list });
     } catch (e) {
       wx.showToast({ title: e instanceof Error ? e.message : "加载失败", icon: "none" });
     } finally {

@@ -66,9 +66,9 @@ Page({
       this.setData({ recording: false });
       void this.afterRecordStop(res.tempFilePath);
     });
-    this.recorder.onError(() => {
+    this.recorder.onError((error) => {
       this.setData({ recording: false });
-      wx.showToast({ title: "录音失败", icon: "none" });
+      wx.showToast({ title: error.errMsg || "录音失败，请检查麦克风权限", icon: "none" });
     });
     void this.loadBankSeasons();
   },
@@ -137,6 +137,7 @@ Page({
       });
       this.setData({ recording: true, speechHint: "录音中，再点一次结束并识别" });
     } else {
+      this.setData({ speechHint: "正在结束录音…" });
       this.recorder.stop();
     }
   },

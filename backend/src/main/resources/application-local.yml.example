@@ -8,6 +8,12 @@
 # - 远程连库：安全组放行 3306，宝塔中开启数据库远程访问并授权你的客户端 IP。
 
 spring:
+  data:
+    redis:
+      # 与 MySQL 同机时通常用 127.0.0.1；远程开发连 ECS 时用公网 IP 并放行 6379
+      host: 127.0.0.1
+      port: 6379
+      # password: 若 Redis 设置了密码请填写
   datasource:
     url: jdbc:mysql://127.0.0.1:3306/speaker?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&connectTimeout=15000&socketTimeout=60000&allowPublicKeyRetrieval=true
     username: admin
@@ -15,8 +21,10 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
 
 app:
-  jwt:
-    secret: 请填写至少32字符的随机串
+  cache:
+    # 与 MySQL 同机部署 Redis 且需用 Redis 缓存题库时设为 true；本机未装 Redis 时用 false（默认见 application.yml）
+    # 注意：use-redis=false 时即使配置了 spring.data.redis.host，也不会往 Redis 写 key，面板会一直为空。
+    use-redis: false
   admin:
     # 非空时启用 /api/admin；与请求头 X-Admin-Key 一致（题库 PDF 导入等）
     api-key: ""

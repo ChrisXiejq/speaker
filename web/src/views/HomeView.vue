@@ -1,20 +1,14 @@
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
 import { http } from '@/api/http'
 import { toastError } from '@/utils/toast'
 import PracticeDashboard from '@/components/PracticeDashboard.vue'
 
-const auth = useAuthStore()
 const stats = ref(null)
 const loadingStats = ref(false)
 
 async function loadDashboard() {
-  if (!auth.isLoggedIn) {
-    stats.value = null
-    return
-  }
   loadingStats.value = true
   try {
     const { data } = await http.get('/api/practice/stats/dashboard')
@@ -28,12 +22,6 @@ async function loadDashboard() {
 }
 
 onMounted(loadDashboard)
-watch(
-  () => auth.isLoggedIn,
-  () => {
-    void loadDashboard()
-  },
-)
 </script>
 
 <template>
@@ -42,16 +30,12 @@ watch(
       <template #header>
         <div class="hero-head">
           <span class="hero-title">雅思口语模拟对练</span>
-          <el-tag v-if="auth.isLoggedIn" type="success" effect="dark" round size="small">已登录</el-tag>
-          <el-tag v-else type="info" effect="plain" round size="small">未登录</el-tag>
         </div>
       </template>
       <p class="hero-sub">英式考官风格 · Part 1/2/3 · 通义千问驱动</p>
-      <p v-if="!auth.isLoggedIn" class="hint">请先登录以使用对练与记录</p>
     </el-card>
 
     <PracticeDashboard
-      v-if="auth.isLoggedIn"
       :stats="stats"
       :loading="loadingStats"
     />
@@ -61,7 +45,6 @@ watch(
         <RouterLink
           to="/practice"
           class="tile-link"
-          :class="{ disabled: !auth.isLoggedIn }"
         >
           <el-card class="tile-card" shadow="hover">
             <div class="tile-icon">🎙</div>
@@ -74,7 +57,6 @@ watch(
         <RouterLink
           to="/history"
           class="tile-link"
-          :class="{ disabled: !auth.isLoggedIn }"
         >
           <el-card class="tile-card" shadow="hover">
             <div class="tile-icon">📋</div>
@@ -125,12 +107,6 @@ watch(
   font-size: 0.95rem;
 }
 
-.hint {
-  margin: 0.75rem 0 0;
-  font-size: 0.88rem;
-  color: rgba(167, 243, 208, 0.65);
-}
-
 .grid {
   margin-top: 0;
 }
@@ -142,11 +118,6 @@ watch(
   margin-bottom: 1rem;
 }
 
-.tile-link.disabled {
-  pointer-events: none;
-  opacity: 0.42;
-}
-
 .tile-card {
   transition:
     transform 0.2s ease,
@@ -154,7 +125,7 @@ watch(
   min-height: 140px;
 }
 
-.tile-link:not(.disabled):hover .tile-card {
+.tile-link:hover .tile-card {
   transform: translateY(-2px);
   border-color: rgba(74, 222, 128, 0.45) !important;
 }

@@ -2,7 +2,7 @@
 
 本仓库包含：
 
-- `backend/`：Spring Boot 3 + **MyBatis** + **JWT** + 通义千问（DashScope）+ 限流；**仅连接 MySQL**（通过 `application-local.yml` 配置云库或自建库，密码与密钥写在文件内，不使用环境变量）
+- `backend/`：Spring Boot 3 + **MyBatis** + 单用户免登录模式 + 通义千问（DashScope）+ 限流；**仅连接 MySQL**（通过 `application-local.yml` 配置云库或自建库）
 - `web/`：**Vue 3 + JavaScript + Vite** 浏览器端 SPA，对接同一套 API（开发时代理到 `localhost:8080`）
 - `miniprogram/`：微信小程序前端（TypeScript），对接上述 API
 
@@ -11,7 +11,7 @@
 ## 后端运行
 
 1. 安装 **JDK 17**、**Maven**。
-2. **必须**：将 `backend/src/main/resources/application-local.yml.example` 复制为同目录下的 `application-local.yml`，填写 **MySQL 连接串、用户名、密码**、`app.jwt.secret`、`app.dashscope.api-key`、微信小程序 `appid`/`secret` 等；无此文件或未配置有效 MySQL 则**无法启动**。该文件已加入 `.gitignore`，不会被提交。默认已激活 `local` profile。
+2. **必须**：将 `backend/src/main/resources/application-local.yml.example` 复制为同目录下的 `application-local.yml`，填写 **MySQL 连接串、用户名、密码**、`app.dashscope.api-key`、微信小程序 `appid`/`secret` 等；无此文件或未配置有效 MySQL 则**无法启动**。不要提交含真实密钥的本地配置。默认已激活 `local` profile。
 3. 启动：
 
 ```bash
@@ -51,19 +51,17 @@ npm run dev
 
 ## 安全与上线建议
 
-- **JWT**：生产环境必须更换 `JWT_SECRET`，并配合 HTTPS；可考虑缩短有效期 + 刷新令牌。
+- **访问范围**：普通业务接口为单用户免登录模式，部署到公网时应通过防火墙、网关或反向代理限制访问者。
 - **限流**：`RateLimitFilter` 按 IP 做粗粒度保护；生产可前置 WAF / API 网关限流。
 - **CORS**：小程序主要走 `wx.request`，浏览器 CORS 为次要；仍建议将 `CORS_ORIGINS` 设为固定白名单。
 - **密钥**：勿将 `DASHSCOPE_API_KEY` 提交到仓库；使用环境变量或密钥管理。
-- **日志**：避免打印用户语音全文与 Token；当前实现已避免在日志中输出敏感字段。
+- **日志**：避免打印用户语音全文与密钥；当前实现已避免在日志中输出敏感字段。
 - **ASR**：可在服务端接入阿里云语音识别，将小程序录音文件上传后转写为文本再调用 `/reply`；当前前端支持手打/粘贴，便于先跑通闭环。
 
 ## API 摘要
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| POST | `/api/auth/register` | 注册 |
-| POST | `/api/auth/login` | 登录，返回 JWT |
 | POST | `/api/practice/sessions` | 开始会话（Part1/2/3，题库或自定义话题） |
 | POST | `/api/practice/sessions/{id}/reply` | 提交用户文本回答 |
 | POST | `/api/practice/sessions/{id}/complete` | 生成总结评分 |

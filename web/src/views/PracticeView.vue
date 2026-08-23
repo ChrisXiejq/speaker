@@ -54,12 +54,14 @@ const lastRecognizedText = ref('')
 
 const speechHint = ref('')
 const recording = ref(false)
+const audioFileInput = ref(null)
 let mediaRecorder = null
 let mediaChunks = []
 let recordStream = null
 
 const browserTtsOk = computed(() => canSpeak())
 const browserAsrOk = computed(() => canRecognize())
+const secureMicContext = computed(() => typeof window !== 'undefined' && window.isSecureContext)
 
 watch(examinerLine, (line) => {
   if (!sessionId.value || !line?.trim()) return
@@ -210,6 +212,10 @@ async function submitReply(text) {
 }
 
 function listenBrowser() {
+  if (!secureMicContext.value) {
+    toastWarning('当前页面使用 HTTP，浏览器禁止麦克风识别。请使用 HTTPS，或选择音频文件上传 ASR。')
+    return
+  }
   const R = getRecognition()
   if (!R) {
     toastWarning('当前浏览器不支持 Web Speech 识别，请改用「录音上传 ASR」')
@@ -261,13 +267,18 @@ function listenBrowser() {
   }
 
   R.onresult = (ev) => {
-    const parts = []
+    const finalParts = []
+    const interimParts = []
     for (let i = 0; i < ev.results.length; i++) {
+      const transcript = ev.results[i][0]?.transcript?.trim()
+      if (!transcript) continue
       if (ev.results[i].isFinal) {
-        parts.push(ev.results[i][0].transcript.trim())
+        finalParts.push(transcript)
+      } else {
+        interimParts.push(transcript)
       }
     }
-    const joined = parts.join(' ').trim()
+    const joined = [...finalParts, ...interimParts].join(' ').trim()
     if (joined) {
       accumulated = joined
     }
@@ -280,12 +291,24 @@ function listenBrowser() {
   R.onerror = (ev) => {
     clearSilenceTimer()
     speechHint.value = ''
-    if (ev.error === 'aborted' || ev.error === 'no-speech') return
+    if (ev.error === 'aborted') return
+    const messages = {
+      'no-speech': '没有检测到语音，请靠近麦克风后重试',
+      'not-allowed': '麦克风权限被拒绝，请在浏览器站点设置中允许麦克风',
+      'service-not-allowed': '浏览器语音识别服务不可用，请改用录音上传 ASR',
+      'audio-capture': '未找到可用麦克风，请检查系统输入设备',
+      network: '浏览器语音识别网络异常，请改用录音上传 ASR',
+    }
+    toastError(messages[ev.error] || `语音识别失败：${ev.error || '未知错误'}`)
   }
 
   R.onend = () => {
-    // 浏览器主动结束会话时，若仍有待处理的静默定时器则保留，由定时器提交
+    clearSilenceTimer()
     speechHint.value = ''
+    if (!submitted && accumulated.trim()) {
+      submitted = true
+      void submitReply(accumulated)
+    }
   }
 
   speechHint.value = `聆听中…说完后停顿约 ${SPEECH_SILENCE_MS_BEFORE_SUBMIT / 1000} 秒将自动提交`
@@ -300,30 +323,74 @@ function listenBrowser() {
 
 async function toggleRecordUpload() {
   if (!recording.value) {
+    if (!secureMicContext.value) {
+      toastWarning('当前页面使用 HTTP，浏览器禁止直接录音。请使用 HTTPS，或点击“选择音频文件 ASR”。')
+      return
+    }
     if (!navigator.mediaDevices?.getUserMedia) {
       toastWarning('无法访问麦克风，请检查权限')
       return
     }
-    recordStream = await navigator.mediaDevices.getUserMedia({ audio: true })
-    mediaChunks = []
-    mediaRecorder = new MediaRecorder(recordStream)
-    mediaRecorder.ondataavailable = (e) => {
-      if (e.data.size) mediaChunks.push(e.data)
-    }
-    mediaRecorder.onstop = async () => {
+    try {
+      recordStream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      mediaChunks = []
+      mediaRecorder = new MediaRecorder(recordStream)
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size) mediaChunks.push(e.data)
+      }
+      mediaRecorder.onerror = () => {
+        recordStream?.getTracks().forEach((t) => t.stop())
+        recordStream = null
+        mediaRecorder = null
+        recording.value = false
+        speechHint.value = ''
+        toastError('浏览器录音失败，请检查麦克风是否被其他应用占用')
+      }
+      mediaRecorder.onstop = async () => {
+        const mimeType = mediaRecorder?.mimeType || 'audio/webm'
+        recordStream?.getTracks().forEach((t) => t.stop())
+        recordStream = null
+        const blob = new Blob(mediaChunks, { type: mimeType })
+        mediaRecorder = null
+        if (!blob.size) {
+          toastWarning('录音为空，请检查麦克风权限后重试')
+          return
+        }
+        await uploadAsrBlob(blob)
+      }
+      mediaRecorder.start()
+      recording.value = true
+      speechHint.value = '录音中，再次点击结束并识别'
+    } catch (e) {
       recordStream?.getTracks().forEach((t) => t.stop())
       recordStream = null
-      const blob = new Blob(mediaChunks, { type: mediaRecorder.mimeType || 'audio/webm' })
-      mediaRecorder = null
-      await uploadAsrBlob(blob)
+      const messages = {
+        NotAllowedError: '麦克风权限被拒绝，请在浏览器站点设置中允许麦克风',
+        NotFoundError: '未找到可用麦克风，请检查系统输入设备',
+        NotReadableError: '麦克风可能被其他应用占用，请关闭占用后重试',
+        SecurityError: '当前页面不允许访问麦克风，请使用 HTTPS',
+      }
+      toastError(messages[e?.name] || e?.message || '无法启动录音')
     }
-    mediaRecorder.start()
-    recording.value = true
-    speechHint.value = '录音中，再次点击结束并识别'
   } else {
     mediaRecorder?.stop()
     recording.value = false
     speechHint.value = ''
+  }
+}
+
+function chooseAudioFile() {
+  audioFileInput.value?.click()
+}
+
+async function onAudioFileSelected(event) {
+  const input = event.target
+  const file = input?.files?.[0]
+  if (!file) return
+  try {
+    await uploadAsrBlob(file)
+  } finally {
+    input.value = ''
   }
 }
 
@@ -479,6 +546,14 @@ function reset() {
           :closable="false"
           class="mb-alert"
         />
+        <el-alert
+          v-if="!secureMicContext"
+          title="当前为 HTTP 页面，浏览器会禁止直接使用麦克风。可先选择已有录音上传；实时录音需为站点配置 HTTPS。"
+          type="warning"
+          show-icon
+          :closable="false"
+          class="mb-alert"
+        />
         <div class="row-btns">
           <el-button
             :disabled="loading || !browserTtsOk"
@@ -495,6 +570,17 @@ function reset() {
           <el-button :disabled="loading" round @click="toggleRecordUpload">
             {{ recording ? '停止并上传 ASR' : '录音上传 ASR' }}
           </el-button>
+          <el-button :disabled="loading || recording" round @click="chooseAudioFile">
+            选择音频文件 ASR
+          </el-button>
+          <input
+            ref="audioFileInput"
+            class="audio-file-input"
+            type="file"
+            accept="audio/*"
+            capture
+            @change="onAudioFileSelected"
+          />
         </div>
         <p v-if="speechHint" class="speech-hint">{{ speechHint }}</p>
 
@@ -654,6 +740,10 @@ function reset() {
 .row-btns .el-button {
   flex: 1;
   min-width: 140px;
+}
+
+.audio-file-input {
+  display: none;
 }
 
 .speech-hint {

@@ -5,7 +5,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-@MapperScan("com.speaker.app.mapper")
+@MapperScan("com.speaker.app.repository")
 public class SpeakerApplication {
 
     public static void main(String[] args) {

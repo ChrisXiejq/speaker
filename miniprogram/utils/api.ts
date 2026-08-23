@@ -1,5 +1,4 @@
 import { API_BASE } from "./config";
-import { clearToken, getToken } from "./storage";
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";
 
@@ -8,22 +7,13 @@ function getApiBase(): string {
 }
 
 export function uploadAsr(filePath: string): Promise<{ text: string }> {
-  const token = getToken();
   return new Promise((resolve, reject) => {
     wx.uploadFile({
       url: `${getApiBase()}/api/practice/asr`,
       filePath,
       name: "file",
-      header: token ? { Authorization: `Bearer ${token}` } : {},
       success(res) {
         const status = res.statusCode || 0;
-        if (status === 401) {
-          clearToken();
-          wx.showToast({ title: "请重新登录", icon: "none" });
-          wx.reLaunch({ url: "/pages/login/login" });
-          reject(new Error("unauthorized"));
-          return;
-        }
         if (status >= 400) {
           try {
             const body = JSON.parse(res.data as string) as { error?: string };
@@ -47,7 +37,6 @@ export function uploadAsr(filePath: string): Promise<{ text: string }> {
 
 /** 服务端 TTS，返回临时文件路径供 InnerAudioContext 播放 */
 export function downloadTtsToTemp(text: string): Promise<string> {
-  const token = getToken();
   return new Promise((resolve, reject) => {
     wx.request({
       url: `${getApiBase()}/api/practice/tts`,
@@ -55,18 +44,10 @@ export function downloadTtsToTemp(text: string): Promise<string> {
       data: { text },
       header: {
         "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       responseType: "arraybuffer",
       success(res) {
         const status = res.statusCode || 0;
-        if (status === 401) {
-          clearToken();
-          wx.showToast({ title: "请重新登录", icon: "none" });
-          wx.reLaunch({ url: "/pages/login/login" });
-          reject(new Error("unauthorized"));
-          return;
-        }
         if (status >= 400) {
           reject(new Error(`TTS HTTP ${status}`));
           return;
@@ -90,13 +71,9 @@ export function request<T>(
   method: HttpMethod = "GET",
   data?: Record<string, unknown>
 ): Promise<T> {
-  const token = getToken();
   const header: Record<string, string> = {
     "Content-Type": "application/json",
   };
-  if (token) {
-    header.Authorization = `Bearer ${token}`;
-  }
   return new Promise((resolve, reject) => {
     wx.request({
       url: `${getApiBase()}${path}`,
@@ -106,13 +83,6 @@ export function request<T>(
       timeout: 60000,
       success(res) {
         const status = res.statusCode || 0;
-        if (status === 401) {
-          clearToken();
-          wx.showToast({ title: "请重新登录", icon: "none" });
-          wx.reLaunch({ url: "/pages/login/login" });
-          reject(new Error("unauthorized"));
-          return;
-        }
         if (status >= 400) {
           const body = res.data as { error?: string };
           reject(new Error(body?.error || `HTTP ${status}`));

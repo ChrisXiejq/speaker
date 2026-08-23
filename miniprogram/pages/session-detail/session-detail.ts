@@ -25,8 +25,9 @@ type Detail = {
     part: string;
     topic: string;
     status: string;
-    startedAt: string;
-    endedAt?: string;
+    startedAt: number;
+    endedAt?: number;
+    startedAtText?: string;
   };
   turns: Turn[];
   report: Report | null;
@@ -45,6 +46,9 @@ Page({
     wx.showLoading({ title: "加载中" });
     try {
       const detail = await request<Detail>(`/api/practice/sessions/${id}`, "GET");
+      if (detail?.session?.startedAt != null) {
+        detail.session.startedAtText = new Date(detail.session.startedAt).toLocaleString();
+      }
       this.setData({ detail });
     } catch (e) {
       wx.showToast({ title: e instanceof Error ? e.message : "加载失败", icon: "none" });

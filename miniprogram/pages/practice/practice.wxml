@@ -31,7 +31,7 @@
       <view class="muted">听说练习</view>
       <view class="hint">先播放题目，再录音说英语；识别结果可编辑后提交。</view>
       <button class="btn-outline" loading="{{ busy }}" bindtap="playExaminerTts">播放题目（服务端 TTS）</button>
-      <button class="btn-outline" loading="{{ busy }}" disabled="{{ recording }}" bindtap="toggleRecord">
+      <button class="btn-outline" loading="{{ busy }}" disabled="{{ busy }}" bindtap="toggleRecord">
         {{ recording ? '结束录音并识别' : '开始录音' }}
       </button>
       <view class="speech-hint" wx:if="{{ speechHint }}">{{ speechHint }}</view>

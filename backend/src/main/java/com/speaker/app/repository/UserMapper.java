@@ -1,15 +1,13 @@
-package com.speaker.app.mapper;
+package com.speaker.app.repository;
 
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.speaker.app.model.entity.User;
 import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 
 @Mapper
-public interface UserMapper {
+public interface UserMapper extends BaseMapper<User> {
 
-    int insert(User user);
-
-    User findByUsername(@Param("username") String username);
-
-    User findById(@Param("id") Long id);
+    @Select("SELECT * FROM users ORDER BY id ASC LIMIT 1")
+    User findFirstById();
 }

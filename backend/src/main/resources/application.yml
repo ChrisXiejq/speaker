@@ -1,7 +1,14 @@
 spring:
   application:
     name: speaking-killer-api
-  # 仅支持 MySQL：连接信息必须在 application-local.yml 中配置（见 application-local.yml.example）
+  data:
+    redis:
+      # 与 Redis 同机部署的后端用 127.0.0.1；在笔记本上跑后端、Redis 只在 ECS 上时，勿写公网 IP（往往被拒绝），应 use-redis=false 或 SSH 隧道
+      host: 47.116.120.81
+      port: 6379
+      # 逻辑库默认 0，与宝塔「DB0」一致；
+      # database: 0
+      # 密码在 application-local.yml 中配置（宝塔 Redis 若启用密码）
   profiles:
     active: local
   sql:
@@ -13,28 +20,43 @@ spring:
       max-file-size: 10MB
       max-request-size: 12MB
 
-mybatis:
-  mapper-locations: classpath:mapper/**/*.xml
+mybatis-plus:
   type-aliases-package: com.speaker.app.model.entity
-  type-handlers-package: com.speaker.app.mybatis.typehandler
   configuration:
     map-underscore-to-camel-case: true
     default-enum-type-handler: org.apache.ibatis.type.EnumTypeHandler
+  global-config:
+    db-config:
+      id-type: auto
 
 server:
   port: 8080
   error:
     include-message: always
 
+# Prometheus 抓取 /actuator/prometheus；Grafana 连 Prometheus，不直连应用
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, prometheus, metrics
+  endpoint:
+    health:
+      show-details: when_authorized
+    prometheus:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+
 app:
-  jwt:
-    secret: change-me-to-a-long-random-string-at-least-256-bits
-    expiration-ms: 86400000
   cors:
     allowed-origins: http://localhost:5173
   security:
     rate-limit:
-      auth-per-minute: 20
       api-per-minute: 120
       ai-per-minute: 30
   dashscope:
@@ -51,8 +73,22 @@ app:
     mini-app-secret: ""
   admin:
     api-key: "jq speaker awsome"
+  cache:
+    # 为 false 时：题库缓存在 JVM 内存，本地开发无需连 Redis。ECS 上与 Redis 同机且已配置好时再改为 true。
+    use-redis: false
+    # 使用 Redis 时题库 seasons / questions 聚合缓存 TTL（毫秒），默认 10 分钟
+    bank-ttl-ms: 600000
 
 logging:
+  # 控制台：含 requestId（由 RequestLoggingFilter 写入 MDC），便于对照单次请求
+  pattern:
+    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%X{requestId:-}] [%thread] %logger{40} - %msg%n%wEx"
+  # 日志文件（与控制台相同格式）；不需要文件时可注释掉 file.name
+  file:
+    name: logs/speaker.log
   level:
-    com.speaker.app: INFO
+    root: INFO
+    com.speaker.app: DEBUG
+    com.speaker.app.repository: DEBUG
     org.springframework.security: WARN
+    org.springframework.web.servlet.mvc.method.annotation.ExceptionHandlerExceptionResolver: DEBUG

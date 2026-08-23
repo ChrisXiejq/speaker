@@ -1,11 +1,8 @@
 <script setup>
 import { computed } from 'vue'
-import { RouterLink, RouterView, useRouter, useRoute } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
+import { RouterLink, RouterView, useRoute } from 'vue-router'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 
-const auth = useAuthStore()
-const router = useRouter()
 const route = useRoute()
 
 const activeMenu = computed(() => {
@@ -14,14 +11,6 @@ const activeMenu = computed(() => {
   return p
 })
 
-function logout() {
-  auth.logout()
-  router.push('/')
-}
-
-function goLogin() {
-  router.push('/login')
-}
 </script>
 
 <template>
@@ -42,12 +31,6 @@ function goLogin() {
             <el-menu-item index="/bank">题库</el-menu-item>
             <el-menu-item index="/history">记录</el-menu-item>
           </el-menu>
-          <div class="header-actions">
-            <el-button v-if="auth.isLoggedIn" type="primary" plain round size="small" @click="logout">
-              退出
-            </el-button>
-            <el-button v-else type="primary" round size="small" @click="goLogin">登录</el-button>
-          </div>
         </div>
       </el-header>
       <el-main class="main">
@@ -120,10 +103,6 @@ function goLogin() {
   color: var(--el-color-primary) !important;
   background: rgba(34, 197, 94, 0.1) !important;
   border-radius: 8px;
-}
-
-.header-actions {
-  flex-shrink: 0;
 }
 
 .main {

@@ -5,6 +5,8 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -12,6 +14,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 public class AdminApiKeyFilter extends OncePerRequestFilter {
+
+    private static final Logger log = LoggerFactory.getLogger(AdminApiKeyFilter.class);
 
     public static final String HEADER = "X-Admin-Key";
 
@@ -30,6 +34,7 @@ public class AdminApiKeyFilter extends OncePerRequestFilter {
         }
         String configured = appProperties.getAdmin().getApiKey();
         if (configured == null || configured.isBlank()) {
+            log.warn("[filter:admin] 拒绝访问 503：未配置 app.admin.api-key, path={}", request.getRequestURI());
             response.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
             response.getOutputStream().write(
@@ -38,6 +43,7 @@ public class AdminApiKeyFilter extends OncePerRequestFilter {
         }
         String provided = request.getHeader(HEADER);
         if (provided == null || !configured.equals(provided)) {
+            log.warn("[filter:admin] 拒绝访问 401：X-Admin-Key 无效或缺失, path={}", request.getRequestURI());
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
             response.getOutputStream().write("{\"error\":\"无效的管理员密钥\"}".getBytes(StandardCharsets.UTF_8));

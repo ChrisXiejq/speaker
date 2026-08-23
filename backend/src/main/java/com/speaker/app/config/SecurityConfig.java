@@ -1,18 +1,13 @@
 package com.speaker.app.config;
 
 import com.speaker.app.security.AdminApiKeyFilter;
-import com.speaker.app.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -26,11 +21,9 @@ import java.util.List;
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final AppProperties appProperties;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, AppProperties appProperties) {
-        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+    public SecurityConfig(AppProperties appProperties) {
         this.appProperties = appProperties;
     }
 
@@ -47,14 +40,12 @@ public class SecurityConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/api/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/bank/**").permitAll()
                         .requestMatchers("/api/admin/**").permitAll()
-                        .requestMatchers("/api/auth/**", "/api/health").permitAll()
-                        .requestMatchers("/api/**").authenticated()
+                        .requestMatchers("/api/**").permitAll()
+                        // Prometheus / 健康检查：仅建议内网或 Docker 网络访问；生产请配合防火墙 / 独立端口
+                        .requestMatchers(HttpMethod.GET, "/actuator/prometheus", "/actuator/health").permitAll()
                         .anyRequest().denyAll())
-                // 先注册 Jwt（相对 UsernamePasswordAuthenticationFilter 有固定顺序），再插入 Admin（须在 Jwt 之前）
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(adminApiKeyFilter, JwtAuthenticationFilter.class);
+                .addFilterBefore(adminApiKeyFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 
@@ -75,13 +66,4 @@ public class SecurityConfig {
         return source;
     }
 
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(12);
-    }
-
-    @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
-        return configuration.getAuthenticationManager();
-    }
 }

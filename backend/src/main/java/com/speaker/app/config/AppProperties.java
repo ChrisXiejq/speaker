@@ -11,7 +11,6 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "app")
 public class AppProperties {
 
-    private Jwt jwt = new Jwt();
     private Cors cors = new Cors();
     private Security security = new Security();
     private Dashscope dashscope = new Dashscope();
@@ -29,13 +28,6 @@ public class AppProperties {
 
     @Getter
     @Setter
-    public static class Jwt {
-        private String secret;
-        private long expirationMs;
-    }
-
-    @Getter
-    @Setter
     public static class Cors {
         private String allowedOrigins;
     }
@@ -48,7 +40,6 @@ public class AppProperties {
         @Getter
         @Setter
         public static class RateLimit {
-            private int authPerMinute = 20;
             private int apiPerMinute = 120;
             private int aiPerMinute = 30;
         }
